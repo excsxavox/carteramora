@@ -1,4 +1,4 @@
-# Cartera Mora Job
+# Cobranzas
 
 Job en Python con **arquitectura hexagonal** y **cadena de responsabilidad**. Procesa **2 archivos de entrada** (TAB) y genera un reporte JSON.
 

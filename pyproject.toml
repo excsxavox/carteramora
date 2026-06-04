@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "cartera-mora-job"
+name = "cobranzas-job"
 version = "0.1.0"
-description = "Job de procesamiento de cartera en mora con arquitectura hexagonal"
+description = "Job de cobranzas con arquitectura hexagonal"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
@@ -20,14 +20,14 @@ dev = [
 ]
 
 [project.scripts]
-cartera-mora-job = "cartera_mora.jobs.runner:main"
+cobranzas-job = "cobranzas.jobs.runner:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/cartera_mora"]
+packages = ["src/cobranzas"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
 
 [tool.coverage.run]
-source = ["cartera_mora"]
+source = ["cobranzas"]

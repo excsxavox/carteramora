@@ -2,19 +2,19 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from cartera_mora.application.chain.chain_builder import build_proceso_chain
-from cartera_mora.application.chain.proceso_context import ProcesoContext
-from cartera_mora.application.use_cases.procesar_cartera_mora import (
-    ProcesarCarteraMoraUseCase,
+from cobranzas.application.chain.chain_builder import build_proceso_chain
+from cobranzas.application.chain.proceso_context import ProcesoContext
+from cobranzas.application.use_cases.procesar_cobranzas import (
+    ProcesarCobranzasUseCase,
 )
-from cartera_mora.domain.models.credito import Credito
-from cartera_mora.domain.ports.cartera_repository import CarteraRepositoryPort
-from cartera_mora.domain.ports.credito_repository import CreditoRepositoryPort
-from cartera_mora.domain.ports.manifiesto_repository import ManifiestoRepositoryPort
-from cartera_mora.domain.ports.reporte_repository import ReporteRepositoryPort
-from cartera_mora.domain.services.cartera_mora_service import CarteraMoraService
-from cartera_mora.domain.services.cartera_merge_service import CarteraMergeService
-from cartera_mora.domain.services.manifiesto_lis_service import ManifiestoLisService
+from cobranzas.domain.models.credito import Credito
+from cobranzas.domain.ports.cartera_repository import CarteraRepositoryPort
+from cobranzas.domain.ports.credito_repository import CreditoRepositoryPort
+from cobranzas.domain.ports.manifiesto_repository import ManifiestoRepositoryPort
+from cobranzas.domain.ports.reporte_repository import ReporteRepositoryPort
+from cobranzas.domain.services.cobranzas_service import CobranzasService
+from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
+from cobranzas.domain.services.manifiesto_lis_service import ManifiestoLisService
 
 
 class FakeMorosidadRepo(CreditoRepositoryPort):
@@ -65,7 +65,7 @@ def test_cadena_genera_lis(tmp_path: Path):
         cartera_repository=FakeCarteraRepo(),
         reporte_repository=reporte_repo,
         manifiesto_repository=manifiesto_repo,
-        cartera_mora_service=CarteraMoraService(),
+        cobranzas_service=CobranzasService(),
         cartera_merge_service=CarteraMergeService(),
         manifiesto_lis_service=ManifiestoLisService(),
     )
@@ -88,12 +88,12 @@ def test_cadena_genera_lis(tmp_path: Path):
 def test_use_case_con_cadena(tmp_path: Path):
     reporte_repo = FakeReporteRepo()
     manifiesto_repo = FakeManifiestoRepo()
-    use_case = ProcesarCarteraMoraUseCase.crear(
+    use_case = ProcesarCobranzasUseCase.crear(
         morosidad_repository=FakeMorosidadRepo(),
         cartera_repository=FakeCarteraRepo(),
         reporte_repository=reporte_repo,
         manifiesto_repository=manifiesto_repo,
-        cartera_mora_service=CarteraMoraService(),
+        cobranzas_service=CobranzasService(),
         cartera_merge_service=CarteraMergeService(),
         manifiesto_lis_service=ManifiestoLisService(),
         dias_mora_minimo=30,

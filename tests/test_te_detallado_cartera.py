@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from cartera_mora.domain.services.cartera_merge_service import CarteraMergeService
-from cartera_mora.infrastructure.adapters.te_detallado_cartera_parser import (
+from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
+from cobranzas.infrastructure.adapters.te_detallado_cartera_parser import (
     leer_te_detallado_cartera,
 )
 
@@ -101,7 +101,7 @@ def test_vigente_cayambe_al_dia(fecha_corte_y_creditos_cartera):
 
 
 def test_merge_enriquece_morosidad_con_cedula():
-    from cartera_mora.infrastructure.adapters.cuadro_morosidad_parser import (
+    from cobranzas.infrastructure.adapters.cuadro_morosidad_parser import (
         leer_cuadro_morosidad,
     )
 

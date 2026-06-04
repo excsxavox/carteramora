@@ -1,8 +1,8 @@
 from datetime import date
 from pathlib import Path
 
-from cartera_mora.domain.models.credito import Credito
-from cartera_mora.infrastructure.adapters.tsv_file_io import (
+from cobranzas.domain.models.credito import Credito
+from cobranzas.infrastructure.adapters.tsv_file_io import (
     TAB_DELIMITER,
     escribir_creditos_tsv,
     leer_creditos_tsv,

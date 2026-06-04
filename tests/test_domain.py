@@ -1,7 +1,7 @@
 from datetime import date
 
-from cartera_mora.domain.models.credito import Credito, EstadoMora
-from cartera_mora.domain.services.cartera_mora_service import CarteraMoraService
+from cobranzas.domain.models.credito import Credito, EstadoMora
+from cobranzas.domain.services.cobranzas_service import CobranzasService
 
 
 def _credito(dias_mora: int) -> Credito:
@@ -27,14 +27,14 @@ def test_clasificar_mora_grave():
 
 
 def test_filtrar_en_mora():
-    service = CarteraMoraService()
+    service = CobranzasService()
     creditos = [_credito(10), _credito(45), _credito(120)]
     en_mora = service.filtrar_en_mora(creditos, dias_mora_minimo=30)
     assert len(en_mora) == 2
 
 
 def test_construir_reporte_totales():
-    service = CarteraMoraService()
+    service = CobranzasService()
     creditos = [_credito(45), _credito(120)]
     reporte = service.construir_reporte(creditos, dias_mora_minimo=30)
     assert reporte["total_creditos"] == 2

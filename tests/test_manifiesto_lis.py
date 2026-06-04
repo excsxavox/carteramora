@@ -1,8 +1,8 @@
 from datetime import date
 from pathlib import Path
 
-from cartera_mora.domain.models.credito import Credito
-from cartera_mora.domain.services.manifiesto_lis_service import ManifiestoLisService
+from cobranzas.domain.models.credito import Credito
+from cobranzas.domain.services.manifiesto_lis_service import ManifiestoLisService
 
 
 def test_manifiesto_contiene_leidos_y_generados(tmp_path: Path):

@@ -3,30 +3,30 @@ from pathlib import Path
 
 import pytest
 
-from cartera_mora.application.use_cases.procesar_cartera_mora import (
-    ProcesarCarteraMoraUseCase,
+from cobranzas.application.use_cases.procesar_cobranzas import (
+    ProcesarCobranzasUseCase,
 )
-from cartera_mora.domain.models.credito import EstadoMora
-from cartera_mora.domain.services.cartera_mora_service import CarteraMoraService
-from cartera_mora.domain.services.cartera_merge_service import CarteraMergeService
-from cartera_mora.infrastructure.adapters.cuadro_morosidad_parser import (
+from cobranzas.domain.models.credito import EstadoMora
+from cobranzas.domain.services.cobranzas_service import CobranzasService
+from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
+from cobranzas.infrastructure.adapters.cuadro_morosidad_parser import (
     leer_cuadro_morosidad,
 )
-from cartera_mora.infrastructure.adapters.json_reporte_repository import (
+from cobranzas.infrastructure.adapters.json_reporte_repository import (
     JsonReporteRepository,
 )
-from cartera_mora.infrastructure.adapters.tsv_credito_repository import (
+from cobranzas.infrastructure.adapters.tsv_credito_repository import (
     TsvCreditoRepository,
 )
-from cartera_mora.infrastructure.adapters.tsv_cartera_repository import (
+from cobranzas.infrastructure.adapters.tsv_cartera_repository import (
     TsvCarteraRepository,
 )
-from cartera_mora.infrastructure.adapters.tsv_file_io import leer_creditos_tsv
-from cartera_mora.infrastructure.adapters.lis_manifiesto_repository import (
+from cobranzas.infrastructure.adapters.tsv_file_io import leer_creditos_tsv
+from cobranzas.infrastructure.adapters.lis_manifiesto_repository import (
     LisManifiestoRepository,
 )
-from cartera_mora.infrastructure.config.settings import Settings
-from cartera_mora.domain.services.manifiesto_lis_service import ManifiestoLisService
+from cobranzas.infrastructure.config.settings import Settings
+from cobranzas.domain.services.manifiesto_lis_service import ManifiestoLisService
 from tests.test_chain import FakeManifiestoRepo, FakeReporteRepo
 
 FIXTURE_MOROSIDAD = (
@@ -110,13 +110,13 @@ def test_novoa_24_dias_no_esta_en_mora_con_umbral_30(fecha_corte_y_creditos):
 
 def test_filtrado_siete_operaciones_en_mora_umbral_30(fecha_corte_y_creditos):
     _, creditos = fecha_corte_y_creditos
-    en_mora = CarteraMoraService().filtrar_en_mora(creditos, dias_mora_minimo=30)
+    en_mora = CobranzasService().filtrar_en_mora(creditos, dias_mora_minimo=30)
     assert len(en_mora) == 7
 
 
 def test_total_saldo_capital_atrasado_en_mora(fecha_corte_y_creditos):
     _, creditos = fecha_corte_y_creditos
-    en_mora = CarteraMoraService().filtrar_en_mora(creditos, dias_mora_minimo=30)
+    en_mora = CobranzasService().filtrar_en_mora(creditos, dias_mora_minimo=30)
     total = sum(c.saldo_pendiente for c in en_mora)
     assert total == pytest.approx(6224.29)
 
@@ -127,12 +127,12 @@ def test_leer_creditos_tsv_detecta_cuadro():
 
 
 def test_job_completo_dos_archivos(tmp_path: Path):
-    use_case = ProcesarCarteraMoraUseCase.crear(
+    use_case = ProcesarCobranzasUseCase.crear(
         morosidad_repository=TsvCreditoRepository(FIXTURE_MOROSIDAD),
         cartera_repository=TsvCarteraRepository(FIXTURE_CARTERA),
         reporte_repository=JsonReporteRepository(tmp_path / "reporte.json"),
         manifiesto_repository=LisManifiestoRepository(tmp_path / "reporte.lis"),
-        cartera_mora_service=CarteraMoraService(),
+        cobranzas_service=CobranzasService(),
         cartera_merge_service=CarteraMergeService(),
         manifiesto_lis_service=ManifiestoLisService(),
         dias_mora_minimo=30,
@@ -152,12 +152,12 @@ def test_job_completo_dos_archivos(tmp_path: Path):
 def test_cadena_con_fixture_cuadro(tmp_path: Path):
     reporte_repo = FakeReporteRepo()
     manifiesto_repo = FakeManifiestoRepo()
-    use_case = ProcesarCarteraMoraUseCase.crear(
+    use_case = ProcesarCobranzasUseCase.crear(
         morosidad_repository=TsvCreditoRepository(FIXTURE_MOROSIDAD),
         cartera_repository=TsvCarteraRepository(FIXTURE_CARTERA),
         reporte_repository=reporte_repo,
         manifiesto_repository=manifiesto_repo,
-        cartera_mora_service=CarteraMoraService(),
+        cobranzas_service=CobranzasService(),
         cartera_merge_service=CarteraMergeService(),
         manifiesto_lis_service=ManifiestoLisService(),
         dias_mora_minimo=30,
@@ -181,12 +181,12 @@ def test_job_con_settings(tmp_path: Path):
         ARCHIVO_LIS=str(tmp_path / "reporte.lis"),
         DIAS_MORA_MINIMO=30,
     )
-    use_case = ProcesarCarteraMoraUseCase.crear(
+    use_case = ProcesarCobranzasUseCase.crear(
         morosidad_repository=TsvCreditoRepository(settings.archivo_morosidad),
         cartera_repository=TsvCarteraRepository(settings.archivo_cartera),
         reporte_repository=JsonReporteRepository(settings.archivo_salida),
         manifiesto_repository=LisManifiestoRepository(settings.archivo_lis),
-        cartera_mora_service=CarteraMoraService(),
+        cobranzas_service=CobranzasService(),
         cartera_merge_service=CarteraMergeService(),
         manifiesto_lis_service=ManifiestoLisService(),
         dias_mora_minimo=settings.dias_mora_minimo,
