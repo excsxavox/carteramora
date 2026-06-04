@@ -11,6 +11,9 @@ requires-python = ">=3.9"
 dependencies = [
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
+    "sqlalchemy>=2.0",
+    "pyodbc>=4.0",
+    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]
@@ -20,7 +23,7 @@ dev = [
 ]
 
 [project.scripts]
-cobranzas-job = "cobranzas.jobs.runner:main"
+cobranzas = "cobranzas.jobs.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cobranzas"]

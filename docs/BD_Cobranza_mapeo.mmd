@@ -1,0 +1,39 @@
+flowchart LR
+    subgraph lis [reporte_mora.lis]
+        CED[cedula]
+        NOM[nombre]
+        SOC[socio]
+        NOP[numero_operacion]
+        OFI[oficina]
+        DOF[desc_oficina]
+        SEC[sector]
+        TOP[tipo_oper]
+        TDE[tipo_dest]
+        FEC[fechas]
+        MON[montos]
+    end
+
+    subgraph deudor_t [deudores]
+        D1[documento]
+        D2[nombre]
+        D3[socio]
+    end
+
+    subgraph deuda_t [deuda]
+        A1[numero_operacion]
+        A2[oficina sector tipos]
+        A3[fechas]
+        A4[valores y calificacion]
+    end
+
+    CED --> D1
+    NOM --> D2
+    SOC --> D3
+    NOP --> A1
+    OFI --> A2
+    DOF --> A2
+    SEC --> A2
+    TOP --> A2
+    TDE --> A2
+    FEC --> A3
+    MON --> A4

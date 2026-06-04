@@ -27,7 +27,7 @@ def leer_creditos_tsv(file_path: Path) -> List[Credito]:
         raise FileNotFoundError(f"No se encontró el archivo: {file_path}")
 
     if es_cuadro_morosidad(file_path):
-        _, creditos = leer_cuadro_morosidad(file_path)
+        _, _, creditos = leer_cuadro_morosidad(file_path)
         return creditos
 
     creditos: List[Credito] = []

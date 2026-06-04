@@ -39,4 +39,7 @@ class CarteraMergeService:
             tipo_operacion=cartera.tipo_operacion or morosidad.tipo_operacion,
             oficina=morosidad.oficina or cartera.oficina,
             socio=morosidad.socio or cartera.socio,
+            campos_tab=Credito.combinar_campos_tab(
+                morosidad.campos_tab, cartera.campos_tab
+            ),
         )

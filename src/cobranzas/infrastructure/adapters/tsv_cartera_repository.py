@@ -14,5 +14,5 @@ class TsvCarteraRepository(CarteraRepositoryPort):
         self._file_path = file_path
 
     def obtener_creditos(self) -> list[Credito]:
-        _, creditos = leer_te_detallado_cartera(self._file_path)
+        _, _, creditos = leer_te_detallado_cartera(self._file_path)
         return creditos

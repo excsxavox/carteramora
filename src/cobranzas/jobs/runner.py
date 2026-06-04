@@ -21,9 +21,12 @@ def main() -> int:
     logger.info("Iniciando job de cartera en mora")
     logger.info("Lee morosidad: %s", settings.archivo_morosidad)
     logger.info("Lee cartera: %s", settings.archivo_cartera)
-    logger.info("Genera JSON: %s", settings.archivo_salida)
-    logger.info("Genera LIS: %s", settings.archivo_lis)
-
+    logger.info("Genera salida 1: %s", settings.archivo_salida_morosidad)
+    logger.info("Genera salida 2: %s", settings.archivo_salida_mora)
+    logger.info(
+        "Logs contenido .lis: logger=cobranzas.archivo.lis | muestras=%s",
+        settings.log_muestra_mapeo,
+    )
     try:
         use_case = build_procesar_cobranzas_use_case(settings)
         result = use_case.ejecutar()
@@ -40,7 +43,9 @@ def main() -> int:
         result.total_en_mora,
         result.total_saldo_mora,
     )
-    logger.info("Archivos generados: %s | %s", result.archivo_reporte, result.archivo_lis)
+    logger.info("Archivos generados: %s | %s", result.archivo_detalle_morosidad, result.archivo_detalle_mora)
+    if result.registros_persistidos_bd:
+        logger.info("Registros guardados en BD: %s", result.registros_persistidos_bd)
     return 0
 
 

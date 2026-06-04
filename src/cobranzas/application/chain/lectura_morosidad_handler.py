@@ -18,5 +18,8 @@ class LecturaMorosidadHandler(Handler):
         creditos = self._morosidad_repository.obtener_creditos()
         contexto.creditos = creditos
         contexto.creditos_morosidad = list(creditos)
+        contexto.columnas_morosidad = (
+            creditos[0].columnas_tab() if creditos else ()
+        )
         logger.info("Morosidad | operaciones_cargadas=%s", len(creditos))
         return contexto

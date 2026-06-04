@@ -23,6 +23,9 @@ class LecturaCarteraHandler(Handler):
     def _procesar(self, contexto: ProcesoContext) -> ProcesoContext:
         creditos_cartera = self._cartera_repository.obtener_creditos()
         contexto.total_cartera_leidas = len(creditos_cartera)
+        contexto.columnas_cartera = (
+            creditos_cartera[0].columnas_tab() if creditos_cartera else ()
+        )
         contexto.creditos = self._merge_service.enriquecer_con_cartera(
             contexto.creditos, creditos_cartera
         )

@@ -12,9 +12,6 @@ from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
 from cobranzas.infrastructure.adapters.cuadro_morosidad_parser import (
     leer_cuadro_morosidad,
 )
-from cobranzas.infrastructure.adapters.json_reporte_repository import (
-    JsonReporteRepository,
-)
 from cobranzas.infrastructure.adapters.tsv_credito_repository import (
     TsvCreditoRepository,
 )
@@ -22,12 +19,7 @@ from cobranzas.infrastructure.adapters.tsv_cartera_repository import (
     TsvCarteraRepository,
 )
 from cobranzas.infrastructure.adapters.tsv_file_io import leer_creditos_tsv
-from cobranzas.infrastructure.adapters.lis_manifiesto_repository import (
-    LisManifiestoRepository,
-)
 from cobranzas.infrastructure.config.settings import Settings
-from cobranzas.domain.services.manifiesto_lis_service import ManifiestoLisService
-from tests.test_chain import FakeManifiestoRepo, FakeReporteRepo
 
 FIXTURE_MOROSIDAD = (
     Path(__file__).parent / "fixtures" / "cuadro_morosidad_consolidado.txt"
@@ -65,12 +57,12 @@ def fecha_corte_y_creditos():
 
 
 def test_parse_fecha_corte_desde_encabezado(fecha_corte_y_creditos):
-    fecha_corte, _ = fecha_corte_y_creditos
+    fecha_corte, _, _ = fecha_corte_y_creditos
     assert fecha_corte == date(2026, 3, 6)
 
 
 def test_parse_nueve_operaciones_del_cuadro(fecha_corte_y_creditos):
-    _, creditos = fecha_corte_y_creditos
+    _, _, creditos = fecha_corte_y_creditos
     assert len(creditos) == 9
     numeros = {c.id_credito for c in creditos}
     assert set(OPERACIONES_ESPERADAS.keys()).issubset(numeros)
@@ -85,7 +77,7 @@ def test_parse_nueve_operaciones_del_cuadro(fecha_corte_y_creditos):
     ],
 )
 def test_mapeo_campos_operacion(fecha_corte_y_creditos, no_operacion, esperado):
-    _, creditos = fecha_corte_y_creditos
+    _, _, creditos = fecha_corte_y_creditos
     op = next(c for c in creditos if c.id_credito == no_operacion)
 
     assert op.cliente == esperado["cliente"]
@@ -97,25 +89,25 @@ def test_mapeo_campos_operacion(fecha_corte_y_creditos, no_operacion, esperado):
 
 
 def test_minga_salinAS_clasificacion_mora_grave(fecha_corte_y_creditos):
-    _, creditos = fecha_corte_y_creditos
+    _, _, creditos = fecha_corte_y_creditos
     op = next(c for c in creditos if c.id_credito == "0015219214")
     assert op.clasificar_mora(30) == EstadoMora.MORA_GRAVE
 
 
 def test_novoa_24_dias_no_esta_en_mora_con_umbral_30(fecha_corte_y_creditos):
-    _, creditos = fecha_corte_y_creditos
+    _, _, creditos = fecha_corte_y_creditos
     op = next(c for c in creditos if c.id_credito == "0016280143")
     assert op.esta_en_mora(30) is False
 
 
 def test_filtrado_siete_operaciones_en_mora_umbral_30(fecha_corte_y_creditos):
-    _, creditos = fecha_corte_y_creditos
+    _, _, creditos = fecha_corte_y_creditos
     en_mora = CobranzasService().filtrar_en_mora(creditos, dias_mora_minimo=30)
     assert len(en_mora) == 7
 
 
 def test_total_saldo_capital_atrasado_en_mora(fecha_corte_y_creditos):
-    _, creditos = fecha_corte_y_creditos
+    _, _, creditos = fecha_corte_y_creditos
     en_mora = CobranzasService().filtrar_en_mora(creditos, dias_mora_minimo=30)
     total = sum(c.saldo_pendiente for c in en_mora)
     assert total == pytest.approx(6224.29)
@@ -130,72 +122,46 @@ def test_job_completo_dos_archivos(tmp_path: Path):
     use_case = ProcesarCobranzasUseCase.crear(
         morosidad_repository=TsvCreditoRepository(FIXTURE_MOROSIDAD),
         cartera_repository=TsvCarteraRepository(FIXTURE_CARTERA),
-        reporte_repository=JsonReporteRepository(tmp_path / "reporte.json"),
-        manifiesto_repository=LisManifiestoRepository(tmp_path / "reporte.lis"),
         cobranzas_service=CobranzasService(),
         cartera_merge_service=CarteraMergeService(),
-        manifiesto_lis_service=ManifiestoLisService(),
         dias_mora_minimo=30,
         archivo_morosidad=FIXTURE_MOROSIDAD,
         archivo_cartera=FIXTURE_CARTERA,
-        archivo_reporte=tmp_path / "reporte.json",
-        archivo_lis=tmp_path / "reporte.lis",
+        archivo_detalle_morosidad=tmp_path / "detalle_morosidad.lis",
+        archivo_detalle_mora=tmp_path / "reporte_mora.lis",
     )
     result = use_case.ejecutar()
 
     assert result.total_creditos_procesados == 9
     assert result.total_en_mora == 7
     assert result.total_saldo_mora == pytest.approx(6224.29)
-    assert (tmp_path / "reporte.lis").exists()
-
-
-def test_cadena_con_fixture_cuadro(tmp_path: Path):
-    reporte_repo = FakeReporteRepo()
-    manifiesto_repo = FakeManifiestoRepo()
-    use_case = ProcesarCobranzasUseCase.crear(
-        morosidad_repository=TsvCreditoRepository(FIXTURE_MOROSIDAD),
-        cartera_repository=TsvCarteraRepository(FIXTURE_CARTERA),
-        reporte_repository=reporte_repo,
-        manifiesto_repository=manifiesto_repo,
-        cobranzas_service=CobranzasService(),
-        cartera_merge_service=CarteraMergeService(),
-        manifiesto_lis_service=ManifiestoLisService(),
-        dias_mora_minimo=30,
-        archivo_morosidad=FIXTURE_MOROSIDAD,
-        archivo_cartera=FIXTURE_CARTERA,
-        archivo_reporte=tmp_path / "r.json",
-        archivo_lis=tmp_path / "r.lis",
-    )
-    result = use_case.ejecutar()
-
-    assert result.total_en_mora == 7
-    assert reporte_repo.guardado is not None
-    assert reporte_repo.guardado["fecha_corte"] == "2026-03-06"
+    assert (tmp_path / "detalle_morosidad.lis").exists()
+    assert (tmp_path / "reporte_mora.lis").exists()
+    assert not (tmp_path / "reporte_mora.json").exists()
+    assert not (tmp_path / "manifiesto.lis").exists()
 
 
 def test_job_con_settings(tmp_path: Path):
     settings = Settings(
         ARCHIVO_MOROSIDAD=str(FIXTURE_MOROSIDAD),
         ARCHIVO_CARTERA=str(FIXTURE_CARTERA),
-        ARCHIVO_SALIDA=str(tmp_path / "reporte.json"),
-        ARCHIVO_LIS=str(tmp_path / "reporte.lis"),
+        ARCHIVO_SALIDA_MOROSIDAD=str(tmp_path / "detalle_morosidad.lis"),
+        ARCHIVO_SALIDA_MORA=str(tmp_path / "reporte_mora.lis"),
         DIAS_MORA_MINIMO=30,
+        PERSISTIR_EN_BD=False,
     )
     use_case = ProcesarCobranzasUseCase.crear(
         morosidad_repository=TsvCreditoRepository(settings.archivo_morosidad),
         cartera_repository=TsvCarteraRepository(settings.archivo_cartera),
-        reporte_repository=JsonReporteRepository(settings.archivo_salida),
-        manifiesto_repository=LisManifiestoRepository(settings.archivo_lis),
         cobranzas_service=CobranzasService(),
         cartera_merge_service=CarteraMergeService(),
-        manifiesto_lis_service=ManifiestoLisService(),
         dias_mora_minimo=settings.dias_mora_minimo,
         archivo_morosidad=settings.archivo_morosidad,
         archivo_cartera=settings.archivo_cartera,
-        archivo_reporte=settings.archivo_salida,
-        archivo_lis=settings.archivo_lis,
+        archivo_detalle_morosidad=settings.archivo_salida_morosidad,
+        archivo_detalle_mora=settings.archivo_salida_mora,
     )
     result = use_case.ejecutar()
     assert result.total_en_mora == 7
-    assert settings.archivo_salida.exists()
-    assert settings.archivo_lis.exists()
+    assert settings.archivo_salida_morosidad.exists()
+    assert settings.archivo_salida_mora.exists()

@@ -53,12 +53,12 @@ def fecha_corte_y_creditos_cartera():
 
 
 def test_parse_fecha_corte_cartera(fecha_corte_y_creditos_cartera):
-    fecha_corte, _ = fecha_corte_y_creditos_cartera
+    fecha_corte, _, _ = fecha_corte_y_creditos_cartera
     assert fecha_corte == date(2026, 3, 6)
 
 
 def test_parse_operaciones_te_detallado(fecha_corte_y_creditos_cartera):
-    _, creditos = fecha_corte_y_creditos_cartera
+    _, _, creditos = fecha_corte_y_creditos_cartera
     assert len(creditos) == 14
     numeros = {c.id_credito for c in creditos}
     assert set(OPERACIONES_CARTERA.keys()).issubset(numeros)
@@ -71,7 +71,7 @@ def test_parse_operaciones_te_detallado(fecha_corte_y_creditos_cartera):
 def test_mapeo_campos_te_detallado(
     fecha_corte_y_creditos_cartera, numero_operacion, esperado
 ):
-    _, creditos = fecha_corte_y_creditos_cartera
+    _, _, creditos = fecha_corte_y_creditos_cartera
     op = next(c for c in creditos if c.id_credito == numero_operacion)
 
     assert op.cliente == esperado["nombre"]
@@ -85,7 +85,7 @@ def test_mapeo_campos_te_detallado(
 
 
 def test_castigado_tumbaco_5392_dias_mora(fecha_corte_y_creditos_cartera):
-    _, creditos = fecha_corte_y_creditos_cartera
+    _, _, creditos = fecha_corte_y_creditos_cartera
     op = next(c for c in creditos if c.id_credito == "0030070900")
     assert op.estado_operacion == "CASTIGADO"
     assert op.dias_mora == 5392
@@ -93,7 +93,7 @@ def test_castigado_tumbaco_5392_dias_mora(fecha_corte_y_creditos_cartera):
 
 
 def test_vigente_cayambe_al_dia(fecha_corte_y_creditos_cartera):
-    _, creditos = fecha_corte_y_creditos_cartera
+    _, _, creditos = fecha_corte_y_creditos_cartera
     op = next(c for c in creditos if c.id_credito == "0015539937")
     assert op.estado_operacion == "VIGENTE"
     assert op.dias_mora == 0
@@ -108,8 +108,8 @@ def test_merge_enriquece_morosidad_con_cedula():
     fixture_morosidad = (
         Path(__file__).parent / "fixtures" / "cuadro_morosidad_consolidado.txt"
     )
-    _, morosidad = leer_cuadro_morosidad(fixture_morosidad)
-    _, cartera = leer_te_detallado_cartera(FIXTURE_CARTERA)
+    _, _, morosidad = leer_cuadro_morosidad(fixture_morosidad)
+    _, _, cartera = leer_te_detallado_cartera(FIXTURE_CARTERA)
 
     merge = CarteraMergeService()
     resultado = merge.enriquecer_con_cartera(morosidad, cartera)

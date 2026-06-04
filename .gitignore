@@ -12,7 +12,9 @@ build/
 htmlcov/
 .mypy_cache/
 .ruff_cache/
-data/reporte_mora.json
+data/*.sqlite
+data/*.db
+data/catalogo/*.xlsx
 destino/**/*.json
 destino/**/*.lis
 # Archivos de entrada del core (colocar localmente en docsmora/)

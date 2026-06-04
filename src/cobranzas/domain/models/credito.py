@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
+from typing import Sequence
 
 
 class EstadoMora(str, Enum):
@@ -30,6 +31,30 @@ class Credito:
     segmentacion: str = ""
     fuente_repago: str = ""
     codigo_oficial: str = ""
+    campos_tab: tuple[tuple[str, str], ...] = ()
+
+    def columnas_tab(self) -> tuple[str, ...]:
+        return tuple(clave for clave, _ in self.campos_tab)
+
+    def campos_tab_dict(self) -> dict[str, str]:
+        return dict(self.campos_tab)
+
+    def fila_tab(self, columnas: Sequence[str]) -> str:
+        valores = self.campos_tab_dict()
+        from cobranzas.domain.schemas.tab_schema import fila_tab
+
+        return fila_tab(valores.get(columna, "") for columna in columnas)
+
+    @staticmethod
+    def combinar_campos_tab(
+        base: tuple[tuple[str, str], ...],
+        extra: tuple[tuple[str, str], ...],
+    ) -> tuple[tuple[str, str], ...]:
+        combinado = dict(base)
+        for clave, valor in extra:
+            if valor or clave not in combinado:
+                combinado[clave] = valor
+        return tuple(combinado.items())
 
     def clasificar_mora(self, dias_mora_minimo: int) -> EstadoMora:
         if self.dias_mora < dias_mora_minimo:

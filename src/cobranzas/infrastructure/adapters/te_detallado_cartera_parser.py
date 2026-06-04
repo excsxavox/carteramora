@@ -4,12 +4,15 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from cobranzas.domain.models.credito import Credito
+from cobranzas.domain.schemas.tab_schema import normalizar_encabezados
 from cobranzas.infrastructure.adapters.parser_comun import (
     TAB_DELIMITER,
+    leer_lineas_archivo,
     parse_fecha_corte,
     parse_float,
     parse_int,
     parse_str,
+    row_a_campos_tab,
 )
 
 MARCAS_CARTERA = (
@@ -32,7 +35,9 @@ COL_FUENTE_REPAGO = "FUENTE REPAGO"
 COL_OFICIAL = "OFICIAL"
 
 
-def _row_to_credito(row: dict, fecha_corte: date) -> Credito:
+def _row_to_credito(
+    row: dict, fecha_corte: date, fieldnames: List[str]
+) -> Credito:
     return Credito(
         id_credito=parse_str(row.get(COL_NUMERO_OPERACION)),
         cliente=parse_str(row.get(COL_NOMBRE)),
@@ -49,21 +54,22 @@ def _row_to_credito(row: dict, fecha_corte: date) -> Credito:
         segmentacion=parse_str(row.get(COL_SEGMENTACION)),
         fuente_repago=parse_str(row.get(COL_FUENTE_REPAGO)),
         codigo_oficial=parse_str(row.get(COL_OFICIAL)),
+        campos_tab=row_a_campos_tab(row, fieldnames),
     )
 
 
 def es_te_detallado_cartera(file_path: Path) -> bool:
     if not file_path.exists():
         return False
-    primera_linea = file_path.read_text(encoding="utf-8").splitlines()[0].upper()
+    primera_linea = leer_lineas_archivo(file_path)[0].upper()
     return any(marca in primera_linea for marca in MARCAS_CARTERA)
 
 
-def leer_te_detallado_cartera(file_path: Path) -> Tuple[date, List[Credito]]:
+def leer_te_detallado_cartera(file_path: Path) -> Tuple[date, Tuple[str, ...], List[Credito]]:
     if not file_path.exists():
         raise FileNotFoundError(f"No se encontró el archivo: {file_path}")
 
-    lines = file_path.read_text(encoding="utf-8").splitlines()
+    lines = leer_lineas_archivo(file_path)
     fecha_corte: Optional[date] = None
     header_index: Optional[int] = None
 
@@ -81,9 +87,12 @@ def leer_te_detallado_cartera(file_path: Path) -> Tuple[date, List[Credito]]:
 
     creditos: List[Credito] = []
     reader = csv.DictReader(lines[header_index:], delimiter=TAB_DELIMITER)
+    fieldnames = list(reader.fieldnames or [])
+    columnas_tab = normalizar_encabezados(fieldnames)
+
     for row in reader:
         if not parse_str(row.get(COL_NUMERO_OPERACION)):
             continue
-        creditos.append(_row_to_credito(row, fecha_corte))
+        creditos.append(_row_to_credito(row, fecha_corte, fieldnames))
 
-    return fecha_corte, creditos
+    return fecha_corte, columnas_tab, creditos

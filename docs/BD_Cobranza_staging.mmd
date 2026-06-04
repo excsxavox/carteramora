@@ -1,0 +1,48 @@
+erDiagram
+    tmp_lote_carga ||--o{ tmp_columna_archivo : id_lote
+    tmp_lote_carga ||--o{ tmp_stg_morosidad : id_lote
+    tmp_lote_carga ||--o{ tmp_stg_mora : id_lote
+
+    tmp_lote_carga {
+        int id_lote PK
+        datetime fecha_carga
+        string ruta_archivo_morosidad
+        string ruta_archivo_mora
+        string estado
+        int filas_morosidad
+        int filas_mora
+    }
+
+    tmp_columna_archivo {
+        int id_columna PK
+        int id_lote FK
+        string tipo_archivo
+        int orden
+        string nombre_columna
+        string nombre_original
+    }
+
+    tmp_stg_morosidad {
+        int id_fila PK
+        int id_lote FK
+        int numero_fila
+        string no_operacion
+        string campos_json
+    }
+
+    tmp_stg_mora {
+        int id_fila PK
+        int id_lote FK
+        int numero_fila
+        string no_operacion
+        string campos_json
+    }
+
+    tmp_mapeo_columna {
+        int id_mapeo PK
+        string tipo_archivo
+        string columna_origen
+        string tabla_destino
+        string columna_destino
+        boolean activo
+    }

@@ -1,70 +1,69 @@
-# Cobranzas
+﻿# Cobranzas — Cartera en mora
 
-Job en Python con **arquitectura hexagonal** y **cadena de responsabilidad**. Procesa **2 archivos de entrada** (TAB) y genera un reporte JSON.
+Jobs en Python (hexagonal + cadena de responsabilidad) para procesar cartera en mora desde archivos `.lis` del core.
 
-## Los 2 archivos de entrada
-
-| Archivo | Formato | Contenido |
-|---------|---------|-----------|
-| `01_cuadro_morosidad.txt` | CUADRO DE MOROSIDAD - CONSOLIDADO | Operaciones en mora (`DIAS ATRASO`, saldo atrasado) |
-| `02_te_detallado_cartera.txt` | TE DETALLADO DE CARTERA - CONSOLIDADO | Detalle de cartera (`DIAS MORA`, cédula, calificación) |
-
-Salida: `reporte_mora.json`
-
-## Flujo
-
-```mermaid
-flowchart LR
-    A["01_cuadro_morosidad.txt"] --> H1[LecturaMorosidad]
-    B["02_te_detallado_cartera.txt"] --> H2[LecturaCartera]
-    H1 --> H2
-    H2 --> H3[ProcesamientoMora]
-    H3 --> C["reporte_mora.json"]
-```
-
-1. **Morosidad** — carga operaciones en mora (fuente principal del filtro).
-2. **Cartera** — enriquece por `NUMERO OPERACION` / `NO.OPERACION` (cédula, calificación, segmentación).
-3. **Procesamiento** — filtra mora y genera el reporte.
-
-## Carpetas de ejecución
-
-| Carpeta | Contenido |
-|---------|-----------|
-| `docsmora/` | Entradas (cuadro morosidad + TE cartera) |
-| `destino/` | Salida (reporte JSON) |
+## Estructura del proyecto
 
 ```
-docsmora/2026/05042026/cartera05042026b/
-├── 01_cuadro_morosidad.txt
-└── 02_te_detallado_cartera.txt
-
-destino/2026/05042026/cartera05042026b/
-└── reporte_mora.json
+cartera mora/
+├── main.py                 # Único comando de entrada
+├── .env                    # Configuración (no subir a git)
+├── data/catalogo/          # Excel de asesores (asesores.xlsx)
+├── docsmora/               # Entradas del core (.lis)
+├── destino/                # Salidas limpias (.lis)
+├── data/BD_Cobranza.sqlite # Base SQLite (generada)
+├── src/cobranzas/          # Código fuente
+├── tests/
+├── docs/                   # Documentación técnica
+└── Sql_BD_Cobranza*.sql    # DDL referencia
 ```
 
-Ver `docsmora/README.md` y `destino/README.md`.
+## Comandos
 
-## Variables de entorno
-
-```env
-ARCHIVO_MOROSIDAD=docsmora/2026/05042026/cartera05042026b/01_cuadro_morosidad.txt
-ARCHIVO_CARTERA=docsmora/2026/05042026/cartera05042026b/02_te_detallado_cartera.txt
-ARCHIVO_SALIDA=destino/2026/05042026/cartera05042026b/reporte_mora.json
-DIAS_MORA_MINIMO=30
+```powershell
+.venv\Scripts\activate
+pip install -e .
 ```
 
-## Ejecución
+| Comando | Descripción |
+|---------|-------------|
+| `python main.py` | **Pipeline:** Excel asesores + limpieza (uso diario) |
+| `python main.py sync` | Solo sincronizar asesores desde Excel |
+| `python main.py limpieza` | Solo limpieza → `detalle_morosidad.lis` + `reporte_mora.lis` |
+| `python main.py staging` | Cargar `.lis` limpios a tablas `tmp_*` |
+| `python main.py init-db` | Crear tablas SQLite |
+| `python main.py plantilla` | Crear `data/catalogo/asesores.xlsx` |
 
-```bash
+## Primera vez
+
+```powershell
+python main.py init-db
+python main.py plantilla
+# Editar data/catalogo/asesores.xlsx con tu catálogo real
 python main.py
 ```
 
+## Flujo de jobs
+
+```
+data/catalogo/asesores.xlsx  →  [sync]  →  tabla asesores
+docsmora/*.lis               →  [limpieza]  →  destino/*.lis
+destino/*.lis                →  [staging]  →  tmp_stg_*
+```
+
+## Configuración (`.env`)
+
+Ver `.env.example`. Principales variables:
+
+- `ARCHIVO_EXCEL_ASESORES` — Excel de asesores
+- `ARCHIVO_MOROSIDAD` / `ARCHIVO_CARTERA` — entradas core
+- `ARCHIVO_SALIDA_MOROSIDAD` / `ARCHIVO_SALIDA_MORA` — salidas
+- `DATABASE_URL`, `PERSISTIR_EN_BD`, `SYNC_ASESORES_RECHAZAR_DUPLICADOS`
+
 ## Tests
 
-```bash
+```powershell
 pytest
 ```
 
-Fixtures con datos reales:
-- `tests/fixtures/cuadro_morosidad_consolidado.txt`
-- `tests/fixtures/te_detallado_cartera.txt`
+Más detalle: `docs/BD_Cobranza_ORM.md` · Diagrama ER: `docs/BD_Cobranza.mmd`
