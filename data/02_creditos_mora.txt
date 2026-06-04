@@ -1,0 +1,4 @@
+id_credito	cliente	saldo_pendiente	dias_mora	fecha_corte
+CR-002	María López	8200.0	45	2026-06-01
+CR-003	Carlos Ruiz	32000.75	120	2026-06-01
+CR-004	Ana Torres	5000.0	60	2026-06-01

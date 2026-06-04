@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+data/reporte_mora.json
+destino/**/*.json
+destino/**/*.lis
+# Archivos de entrada del core (colocar localmente en docsmora/)
+docsmora/**/*.lis

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cartera-mora-job"
+version = "0.1.0"
+description = "Job de procesamiento de cartera en mora con arquitectura hexagonal"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.0",
+]
+
+[project.scripts]
+cartera-mora-job = "cartera_mora.jobs.runner:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cartera_mora"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["cartera_mora"]

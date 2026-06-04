@@ -1,0 +1,88 @@
+{
+  "generado_en": "2026-06-04T17:16:23.908834+00:00",
+  "fecha_corte": "2026-03-06",
+  "dias_mora_minimo": 30,
+  "total_creditos": 7,
+  "total_saldo_mora": 6224.29,
+  "mora_leve": [
+    {
+      "no_operacion": "0016796922",
+      "nombre_socio": "INLAGO ALMEIDA MARIA BALTAZARA",
+      "socio": "77370",
+      "oficina": "CAYAMBE",
+      "estado_operacion": "RESOLUCION",
+      "dias_atraso": 76,
+      "saldo_capital_atrasado": 288.02,
+      "total_atrasado": 952.8,
+      "clasificacion_mora": "mora_leve"
+    },
+    {
+      "no_operacion": "0016738669",
+      "nombre_socio": "TOAPANTA CADENA MARIA FABIOLA",
+      "socio": "319629",
+      "oficina": "CAYAMBE",
+      "estado_operacion": "RESOLUCION",
+      "dias_atraso": 55,
+      "saldo_capital_atrasado": 449.41,
+      "total_atrasado": 699.45,
+      "clasificacion_mora": "mora_leve"
+    }
+  ],
+  "mora_grave": [
+    {
+      "no_operacion": "0015219214",
+      "nombre_socio": "MINGA SALINAS MANUEL FRANCISCO",
+      "socio": "83736",
+      "oficina": "CAYAMBE",
+      "estado_operacion": "RESOLUCION",
+      "dias_atraso": 136,
+      "saldo_capital_atrasado": 611.3,
+      "total_atrasado": 760.99,
+      "clasificacion_mora": "mora_grave"
+    },
+    {
+      "no_operacion": "0015389875",
+      "nombre_socio": "ESCOBAR QUINATOA MARTHA CECILIA",
+      "socio": "250799",
+      "oficina": "CAYAMBE",
+      "estado_operacion": "VENCIDO",
+      "dias_atraso": 303,
+      "saldo_capital_atrasado": 1639.78,
+      "total_atrasado": 1944.8,
+      "clasificacion_mora": "mora_grave"
+    },
+    {
+      "no_operacion": "0017226314",
+      "nombre_socio": "CABEZAS VELASQUEZ MARINA PIEDAD",
+      "socio": "78689",
+      "oficina": "CAYAMBE",
+      "estado_operacion": "RESOLUCION",
+      "dias_atraso": 318,
+      "saldo_capital_atrasado": 947.61,
+      "total_atrasado": 1489.19,
+      "clasificacion_mora": "mora_grave"
+    },
+    {
+      "no_operacion": "0017430745",
+      "nombre_socio": "BEDOYA TANDAYAMO JOSE EUGENIO",
+      "socio": "297374",
+      "oficina": "CAYAMBE",
+      "estado_operacion": "RESOLUCION",
+      "dias_atraso": 255,
+      "saldo_capital_atrasado": 1826.96,
+      "total_atrasado": 2173.34,
+      "clasificacion_mora": "mora_grave"
+    },
+    {
+      "no_operacion": "0017261742",
+      "nombre_socio": "SANIPATIN TIXILIMA LILIAN ISABEL",
+      "socio": "217241",
+      "oficina": "CAYAMBE",
+      "estado_operacion": "RESOLUCION",
+      "dias_atraso": 104,
+      "saldo_capital_atrasado": 461.21,
+      "total_atrasado": 1718.77,
+      "clasificacion_mora": "mora_grave"
+    }
+  ]
+}

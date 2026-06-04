@@ -1,0 +1,31 @@
+{
+  "generado_en": "2026-06-04T17:11:04.418494+00:00",
+  "dias_mora_minimo": 30,
+  "total_creditos": 3,
+  "total_saldo_mora": 45200.75,
+  "mora_leve": [
+    {
+      "id_credito": "CR-002",
+      "cliente": "María López",
+      "saldo_pendiente": 8200.0,
+      "dias_mora": 45,
+      "estado": "mora_leve"
+    },
+    {
+      "id_credito": "CR-004",
+      "cliente": "Ana Torres",
+      "saldo_pendiente": 5000.0,
+      "dias_mora": 60,
+      "estado": "mora_leve"
+    }
+  ],
+  "mora_grave": [
+    {
+      "id_credito": "CR-003",
+      "cliente": "Carlos Ruiz",
+      "saldo_pendiente": 32000.75,
+      "dias_mora": 120,
+      "estado": "mora_grave"
+    }
+  ]
+}
