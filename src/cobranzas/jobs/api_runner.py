@@ -23,7 +23,7 @@ def main() -> int:
     logger.info("API en %s", base)
     logger.info("Swagger UI: %s/docs", base)
     logger.info("ReDoc:       %s/redoc", base)
-    logger.info('POST /pipeline  body: {"fecha": "05042026"}')
+    logger.info('POST /pipeline  body: {"fecha": "05052026"}')
 
     uvicorn.run(
         "cobranzas.api.app:app",

@@ -4,10 +4,8 @@ from typing import Optional
 from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from cobranzas.infrastructure.config.docsmora_resolver import (
-    parsear_fecha_corte,
-    resolver_rutas_cartera,
-)
+from cobranzas.infrastructure.config.docsmora_resolver import resolver_rutas_cartera
+from cobranzas.infrastructure.config.fecha_corte import parsear_fecha_corte
 
 
 class Settings(BaseSettings):
@@ -71,7 +69,7 @@ class Settings(BaseSettings):
     fecha_corte: Optional[str] = Field(
         default=None,
         alias="FECHA_CORTE",
-        description="DDMMYYYY; vacío = fecha de hoy",
+        description="MMDDYYYY (mes-día-año); vacío = fecha de hoy",
     )
     usar_rutas_automaticas: bool = Field(
         default=True,

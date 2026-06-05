@@ -7,7 +7,7 @@ from typing import Optional
 from cobranzas.application.chain.pipeline import PipelineContext, build_pipeline_chain
 from cobranzas.domain.models.pipeline_run_result import PipelineRunResult
 from cobranzas.infrastructure.config.database_url import resolver_database_url
-from cobranzas.infrastructure.config.docsmora_resolver import fecha_corte_ddmmyyyy
+from cobranzas.infrastructure.config.fecha_corte import fecha_corte_mmddyyyy
 from cobranzas.infrastructure.config.fecha_corte import normalizar_fecha_corte
 from cobranzas.infrastructure.config.settings import Settings
 from cobranzas.infrastructure.persistence.database import (
@@ -72,7 +72,7 @@ def _log_plan(settings: Settings) -> None:
 def _resultado_desde_contexto(
     settings: Settings, contexto: PipelineContext
 ) -> PipelineRunResult:
-    ftxt = settings.fecha_corte or fecha_corte_ddmmyyyy()
+    ftxt = settings.fecha_corte or fecha_corte_mmddyyyy()
     limpieza = contexto.resultado_limpieza
     return PipelineRunResult(
         ok=contexto.codigo_salida == 0,
@@ -99,7 +99,7 @@ def ejecutar_pipeline(
     """
     Ejecuta Jobs 0 + 0b + 1.
 
-    :param fecha_corte: DDMMYYYY o YYYY-MM-DD; None = hoy (.env)
+    :param fecha_corte: MMDDYYYY o YYYY-MM-DD; None = hoy (.env)
     """
     cfg = settings or build_settings(fecha_corte)
     if configurar_logs:

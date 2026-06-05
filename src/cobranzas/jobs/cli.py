@@ -38,7 +38,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     sub.add_parser(
         "api",
-        help="Servidor HTTP: POST /pipeline con body {\"fecha\": \"DDMMYYYY\"}",
+        help="Servidor HTTP: POST /pipeline con body {\"fecha\": \"MMDDYYYY\"}",
     )
     return parser
 

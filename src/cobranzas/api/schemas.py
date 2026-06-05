@@ -8,15 +8,15 @@ from cobranzas.infrastructure.config.fecha_corte import normalizar_fecha_corte
 class EjecutarPipelineRequest(BaseModel):
     fecha: str = Field(
         ...,
-        description="Fecha de corte: DDMMYYYY (05042026) o YYYY-MM-DD (2026-04-05)",
-        examples=["05042026", "2026-04-05"],
+        description="Fecha de corte: MMDDYYYY (05052026) o YYYY-MM-DD (2026-05-05)",
+        examples=["05052026", "2026-05-05"],
     )
 
     model_config = {
         "json_schema_extra": {
             "examples": [
-                {"fecha": "05042026"},
-                {"fecha": "2026-04-05"},
+                {"fecha": "05052026"},
+                {"fecha": "2026-05-05"},
             ]
         }
     }

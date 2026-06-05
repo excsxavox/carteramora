@@ -5,15 +5,15 @@ Estructura por **año / fecha de corte / lote**:
 ```
 docsmora/
 └── 2026/
-    └── 05042026/              # Fecha de corte (DDMMYYYY)
-        └── cartera05042026b/  # Lote de cartera
-            ├── camorosico_06032026_0047_of_0.lis      (cuadro morosidad)
-            └── cadetacaco_cie06032026_0233_of_0.lis   (reporte detallado cartera)
+    └── 05052026/              # Fecha de corte (MMDDYYYY = mes-día-año)
+        └── cartera05052026b/  # Lote de cartera
+            ├── camorosico_05052026_2341_of_0.lis
+            └── cadetacaco_cobra05052026_0148_of_0.lis
 ```
 
 ## Ejecutar (rutas automáticas)
 
-En `.env` solo necesitas:
+En `.env`:
 
 ```env
 DOCSMORA_DIR=docsmora
@@ -21,17 +21,17 @@ DESTINO_DIR=destino
 USAR_RUTAS_AUTOMATICAS=true
 ```
 
-El job busca **la fecha de hoy** (`DDMMYYYY`, ej. `05062026`):
+El job busca **la fecha de hoy** en formato **MMDDYYYY** (ej. `05052026` = 5 de mayo de 2026):
 
 ```
-docsmora/2026/05062026/cartera05062026b/
-  camorosico_05062026_....lis
-  cadetacaco_cie05062026_....lis
+docsmora/2026/05052026/cartera05052026b/
+  camorosico_05052026_....lis
+  cadetacaco_cobra05052026_....lis
 ```
 
-Salidas en `destino/2026/05062026/cartera05062026b/`.
+Salidas en `destino/2026/05052026/cartera05052026b/`.
 
-Para otra fecha: `FECHA_CORTE=05042026`
+Para otra fecha: `FECHA_CORTE=05052026` o en API `{"fecha": "2026-05-05"}`.
 
 ```bash
 python main.py

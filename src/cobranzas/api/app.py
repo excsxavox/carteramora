@@ -8,8 +8,9 @@ app = FastAPI(
     description=(
         "Ejecuta el pipeline diario (asesores, feriados, limpieza, asignación, BD).\n\n"
         "**Probar en Swagger:** `POST /pipeline` → Try it out → body "
-        '`{"fecha": "05042026"}` → Execute.\n\n'
-        "La fecha define la carpeta `docsmora/{año}/{DDMMYYYY}/cartera{DDMMYYYY}b/`."
+        '`{"fecha": "05052026"}` → Execute.\n\n'
+        "La fecha define la carpeta `docsmora/{año}/{MMDDYYYY}/cartera{MMDDYYYY}b/` "
+        "(mes-día-año, ej. 05052026)."
     ),
     version="0.1.0",
 )
@@ -31,7 +32,7 @@ def ejecutar_pipeline_api(body: EjecutarPipelineRequest) -> dict:
     Ejecuta Jobs 0 + 0b + 1 para la **fecha de corte** indicada.
 
     Busca archivos en:
-    `docsmora/{año}/{DDMMYYYY}/cartera{DDMMYYYY}b/`
+    `docsmora/{año}/{MMDDYYYY}/cartera{MMDDYYYY}b/`
   """
     try:
         resultado = ejecutar_pipeline(

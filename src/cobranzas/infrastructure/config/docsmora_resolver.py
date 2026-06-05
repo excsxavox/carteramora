@@ -1,9 +1,23 @@
-"""Resuelve rutas docsmora/destino por fecha de corte (DDMMYYYY)."""
+"""Resuelve rutas docsmora/destino por fecha de corte (MMDDYYYY)."""
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import Optional
+
+from cobranzas.infrastructure.config.fecha_corte import (
+    fecha_corte_mmddyyyy,
+    parsear_fecha_corte,
+)
+
+__all__ = [
+    "RutasCarteraDia",
+    "carpeta_lote_destino",
+    "carpeta_lote_docsmora",
+    "fecha_corte_mmddyyyy",
+    "parsear_fecha_corte",
+    "resolver_rutas_cartera",
+]
 
 
 @dataclass(frozen=True)
@@ -17,47 +31,35 @@ class RutasCarteraDia:
     archivo_salida_asignacion: Path
 
 
-def fecha_corte_ddmmyyyy(fecha: Optional[date] = None) -> str:
-    """Fecha de corte en formato DDMMYYYY (ej. 05062026)."""
-    return (fecha or date.today()).strftime("%d%m%Y")
-
-
-def parsear_fecha_corte(texto: str) -> date:
-    texto = (texto or "").strip()
-    if len(texto) != 8 or not texto.isdigit():
-        raise ValueError(f"FECHA_CORTE inválida (use DDMMYYYY): {texto!r}")
-    return datetime.strptime(texto, "%d%m%Y").date()
-
-
 def carpeta_lote_docsmora(
     directorio_docsmora: Path,
-    fecha_ddmmyyyy: str,
+    fecha_mmddyyyy: str,
 ) -> Path:
-    """docsmora/{año}/{DDMMYYYY}/cartera{DDMMYYYY}b"""
-    anio = fecha_ddmmyyyy[4:8]
+    """docsmora/{año}/{MMDDYYYY}/cartera{MMDDYYYY}b"""
+    anio = fecha_mmddyyyy[4:8]
     return (
         directorio_docsmora
         / anio
-        / fecha_ddmmyyyy
-        / f"cartera{fecha_ddmmyyyy}b"
+        / fecha_mmddyyyy
+        / f"cartera{fecha_mmddyyyy}b"
     )
 
 
 def carpeta_lote_destino(
     directorio_destino: Path,
-    fecha_ddmmyyyy: str,
+    fecha_mmddyyyy: str,
 ) -> Path:
-    anio = fecha_ddmmyyyy[4:8]
+    anio = fecha_mmddyyyy[4:8]
     return (
         directorio_destino
         / anio
-        / fecha_ddmmyyyy
-        / f"cartera{fecha_ddmmyyyy}b"
+        / fecha_mmddyyyy
+        / f"cartera{fecha_mmddyyyy}b"
     )
 
 
 def _listar_fechas_lote_disponibles(directorio_docsmora: Path) -> list[str]:
-    """Fechas DDMMYYYY con carpeta cartera{fecha}b bajo docsmora/{año}/."""
+    """Fechas MMDDYYYY con carpeta cartera{fecha}b bajo docsmora/{año}/."""
     fechas: list[str] = []
     if not directorio_docsmora.is_dir():
         return fechas
@@ -86,7 +88,7 @@ def _candidatos_lis(carpeta_lote: Path, patron: str) -> list[Path]:
 def _buscar_lis_en_lote(
     carpeta_lote: Path,
     prefijo: str,
-    fecha_ddmmyyyy: str,
+    fecha_mmddyyyy: str,
     directorio_docsmora: Optional[Path] = None,
 ) -> Path:
     if not carpeta_lote.is_dir():
@@ -100,14 +102,14 @@ def _buscar_lis_en_lote(
                     f" Defina FECHA_CORTE en .env o envíe fecha en POST /pipeline."
                 )
         raise FileNotFoundError(
-            f"No existe carpeta de lote para {fecha_ddmmyyyy}: "
+            f"No existe carpeta de lote para {fecha_mmddyyyy}: "
             f"{carpeta_lote.as_posix()}.{sugerencia}"
         )
 
     patrones_con_fecha = (
-        f"{prefijo}*{fecha_ddmmyyyy}*.lis",
-        f"{prefijo}_*{fecha_ddmmyyyy}*.lis",
-        f"{prefijo}_cie{fecha_ddmmyyyy}*.lis",
+        f"{prefijo}*{fecha_mmddyyyy}*.lis",
+        f"{prefijo}_*{fecha_mmddyyyy}*.lis",
+        f"{prefijo}_cie{fecha_mmddyyyy}*.lis",
     )
     patrones_genericos = (
         f"{prefijo}*.lis",
@@ -137,16 +139,16 @@ def resolver_rutas_cartera(
     directorio_docsmora: Path,
     directorio_destino: Path,
     fecha: Optional[date] = None,
-    fecha_ddmmyyyy: Optional[str] = None,
+    fecha_mmddyyyy: Optional[str] = None,
 ) -> RutasCarteraDia:
     """
     Busca entradas y define salidas para la fecha indicada (hoy por defecto).
 
     Estructura:
-      docsmora/2026/05062026/cartera05062026b/camorosico_05062026_....lis
-      destino/2026/05062026/cartera05062026b/...
+      docsmora/2026/05052026/cartera05052026b/camorosico_05052026_....lis
+      destino/2026/05052026/cartera05052026b/...
     """
-    ftxt = fecha_ddmmyyyy or fecha_corte_ddmmyyyy(fecha)
+    ftxt = fecha_mmddyyyy or fecha_corte_mmddyyyy(fecha)
     carpeta_entrada = carpeta_lote_docsmora(directorio_docsmora, ftxt)
     carpeta_salida = carpeta_lote_destino(directorio_destino, ftxt)
     carpeta_salida.mkdir(parents=True, exist_ok=True)
