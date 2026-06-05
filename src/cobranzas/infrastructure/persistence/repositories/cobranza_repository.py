@@ -117,8 +117,15 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         return deuda
 
     def _actualizar_deuda(self, deuda: Deuda, datos) -> None:
+        ahora = datetime.utcnow()
+        deuda.fecha_carga = ahora
+        deuda.fecha_corte = datos.fecha_corte
+        deuda.archivo_origen = datos.archivo_origen or None
         deuda.oficina = datos.oficina or None
-        deuda.descripcion_oficina = datos.descripcion_oficina or None
+        deuda.desc_oficina = datos.desc_oficina or None
+        deuda.socio = datos.socio or None
+        deuda.nombre = datos.nombre or None
+        deuda.cedula = datos.cedula or None
         deuda.sector = datos.sector or None
         deuda.tipo_operacion = datos.tipo_operacion or None
         deuda.tipo_destino = datos.tipo_destino or None
@@ -129,7 +136,41 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         deuda.saldo_capital_prestamo = datos.saldo_capital_prestamo
         deuda.calificacion = datos.calificacion or None
         deuda.total_provision = datos.total_provision
-        deuda.saldo = datos.saldo
+        deuda.saldo_140x = datos.saldo_140x
+        deuda.saldo_141x = datos.saldo_141x
+        deuda.saldo_142x = datos.saldo_142x
+        deuda.interes_normal = datos.interes_normal
+        deuda.interes_devengado = datos.interes_devengado
+        deuda.interes_vencido = datos.interes_vencido
+        deuda.interes_resolucion = datos.interes_resolucion
+        deuda.interes_castigado = datos.interes_castigado
+        deuda.interes_mora = datos.interes_mora
+        deuda.otros_rubros_deuda = datos.otros_rubros_deuda
+        deuda.total_operacion = datos.total_operacion
+        deuda.estado = datos.estado or None
+        deuda.oficial = datos.oficial or None
+        deuda.dias_mora = datos.dias_mora
+        deuda.fecha_ingreso = _parse_fecha_tab(datos.fecha_ingreso)
+        deuda.tipo = datos.tipo or None
+        deuda.dia_pago = datos.dia_pago
+        deuda.valor_cuota = datos.valor_cuota
+        deuda.cuota_actual = datos.cuota_actual
+        deuda.dividendos = datos.dividendos
+        deuda.cod_oficial_asignado = datos.cod_oficial_asignado or None
+        deuda.oficial_asignado = datos.oficial_asignado or None
+        deuda.cod_oficial_adm = datos.cod_oficial_adm or None
+        deuda.oficial_adm = datos.oficial_adm or None
+        deuda.operacion_homologada = datos.operacion_homologada or None
+        deuda.decision = datos.decision or None
+        deuda.segmentacion = datos.segmentacion or None
+        deuda.score = datos.score or None
+        deuda.fuente_repago = datos.fuente_repago or None
+        deuda.identificacion_ifi = datos.identificacion_ifi or None
+        deuda.actividad_economica = datos.actividad_economica or None
+        deuda.fecha_archivo = _parse_fecha_tab(datos.fecha_archivo)
+        deuda.tipo_mes = datos.tipo_mes or None
+        deuda.tipo_fideicomiso = datos.tipo_fideicomiso or None
+        deuda.proceso_cod = datos.proceso_cod
 
     def _obtener_o_crear_asesor(
         self, session: Session, credito: Credito

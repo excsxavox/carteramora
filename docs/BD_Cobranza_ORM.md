@@ -87,7 +87,7 @@ Al persistir cartera en mora (`PERSISTIR_EN_BD=true`) se escriben:
 | Tabla | Origen en `Credito` |
 |-------|---------------------|
 | `deudores` | `cedula`, `nombre`, `socio` |
-| `deuda` | `numero_operacion`, oficina, sector, tipo operación/destino, fechas, montos, calificación |
+| `deuda` | Espejo del `reporte_mora.lis` (operación, socio, montos, intereses, oficiales, segmentación, etc.) |
 | `asesores` | `codigo_oficial` + `nombre_oficial` (o columnas TAB `oficial`, `nombre_oficial`) |
 | `claves` + `catalogo` | Clave `CLASIFICACION_MORA` → valor `mora_leve` / `mora_grave` / `al_dia` |
 | `asesores_deuda` | Montos (`total_atrasado`, `total_operacion`, `saldo_pendiente`), `estado_operacion`, fecha corte |
@@ -97,27 +97,21 @@ Repositorio: `SqlAlchemyCobranzaRepository` (upsert por documento y número de o
 
 ### División deudor / deuda
 
-| Origen (.lis) | Tabla | Columna BD |
-|---------------|-------|------------|
-| CEDULA | deudores | documento |
-| NOMBRE | deudores | nombre |
-| SOCIO | deudores | socio |
-| NUMERO OPERACION | deuda | numero_operacion |
-| OFICINA | deuda | oficina |
-| DESC.OFICINA | deuda | descripcion_oficina |
-| SECTOR | deuda | sector |
-| TIPO OPER. | deuda | tipo_operacion |
-| TIPO DEST. | deuda | tipo_destino |
-| FECHA DE CONCESION | deuda | fecha_concesion |
-| FECHA DE VENCIMIENTO | deuda | fecha_vencimiento |
-| FECHA ULTIMO PAGO | deuda | fecha_ultimo_pago |
-| VALOR ORI.PRESTAM | deuda | valor_original_prestamo |
-| SALDO CAP. PREST | deuda | saldo_capital_prestamo |
-| CALIFICAC | deuda | calificacion |
-| TOTAL PROVISION | deuda | total_provision |
-| SALDO (cap. préstamo) | deuda | saldo |
+`deudores` conserva la clave natural (`documento`, `nombre`, `socio`) para el FK.  
+`deuda` repite socio/nombre/cédula y el resto de columnas del extracto (ver `docs/BD_Cobranza.mmd`).
 
-Si la BD ya existía: ejecutar `Sql_BD_Cobranza_alter_deuda_deudor.sql` (SQL Server) o borrar `data/BD_Cobranza.sqlite` y `python main.py init-db`.
+Ejemplos de mapeo TAB → `deuda`:
+
+| Origen (.lis) | Columna BD |
+|---------------|------------|
+| SALDO 14.0x / 14.1x / 14.2x | saldo_140x / saldo_141x / saldo_142x |
+| INT DEVENGADO / VENCIDO / … | interes_devengado / interes_vencido / … |
+| TOTAL OP | total_operacion |
+| EST | estado |
+| DIAS MORA | dias_mora |
+| DESC.OFICINA | desc_oficina |
+
+Si la BD ya existía: `python main.py migrar-bd` (SQLite) o `Sql_BD_Cobranza_alter_deuda_deudor.sql` (SQL Server).
 
 ## SQL Server (producción)
 

@@ -95,10 +95,14 @@ def test_persistir_credito_mora(tmp_path: Path):
         assert deudor.socio == "83736"
         assert deuda.id_deudor == deudor.id_deudor
         assert deuda.oficina == "1"
-        assert deuda.descripcion_oficina == "CAYAMBE"
+        assert deuda.desc_oficina == "CAYAMBE"
+        assert deuda.cedula == "1900299288"
+        assert deuda.socio == "83736"
         assert deuda.tipo_operacion == "CONSUMO23"
         assert float(deuda.valor_original_prestamo) == 5000.00
         assert deuda.calificacion == "E"
+        assert deuda.fecha_corte == date(2026, 3, 6)
+        assert deuda.fecha_carga is not None
 
         asesor = session.query(Asesor).filter_by(
             cedula=f"{PREFIJO_CEDULA_ASESOR}0047"
