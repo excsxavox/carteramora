@@ -19,11 +19,13 @@ class LimpiezaPipelineHandler(PipelineHandler):
             logger.error("%s", exc)
             contexto.codigo_salida = 1
             contexto.detener = True
+            contexto.mensajes.append(str(exc))
             return contexto
-        except Exception:
+        except Exception as exc:
             logger.exception("Error en limpieza de cartera")
             contexto.codigo_salida = 1
             contexto.detener = True
+            contexto.mensajes.append(str(exc))
             return contexto
 
         logger.info(

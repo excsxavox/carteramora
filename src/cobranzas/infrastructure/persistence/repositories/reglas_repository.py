@@ -23,7 +23,7 @@ class SqlAlchemyReglasRepository(ReglasRepositoryPort):
             filas = session.scalars(
                 select(Regla)
                 .where(
-                    Regla.activo.is_(True),
+                    Regla.activo == True,  # noqa: E712 — SQL Server no acepta IS 1
                     Regla.tipo.in_(tuple(tipos)),
                 )
                 .order_by(Regla.prioridad.desc(), Regla.id_regla)

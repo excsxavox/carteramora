@@ -25,7 +25,7 @@ class SqlAlchemyFeriadosCalendarioRepository(FeriadosCalendarioPort):
             filas = session.scalars(
                 select(Catalogo.valor).where(
                     Catalogo.id_clave == id_clave,
-                    Catalogo.vigencia.is_(True),
+                    Catalogo.vigencia == True,  # noqa: E712 — SQL Server no acepta IS 1
                 )
             ).all()
 
