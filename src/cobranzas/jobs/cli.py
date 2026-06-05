@@ -13,15 +13,20 @@ def _parser() -> argparse.ArgumentParser:
 
     sub.add_parser(
         "pipeline",
-        help="Job 0 + 1: sincronizar asesores (Excel) y limpieza cartera",
+        help="Job 0 + 0b + 1: asesores, feriados (Excel) y limpieza cartera",
     )
     sub.add_parser("sync", help="Job 0: Excel a tabla asesores")
+    sub.add_parser("sync-feriados", help="Job 0b: Excel a catálogo de feriados")
     sub.add_parser("limpieza", help="Job 1: core .lis a destino .lis limpios")
     sub.add_parser("staging", help="Job 2: .lis limpios a tablas tmp_*")
     sub.add_parser("init-db", help="Crear tablas en DATABASE_URL")
     sub.add_parser(
         "plantilla",
         help="Generar data/catalogo/asesores.xlsx de ejemplo",
+    )
+    sub.add_parser(
+        "plantilla-feriados",
+        help="Generar data/catalogo/dias_feriados.xlsx (Ecuador)",
     )
     sub.add_parser(
         "migrar-bd",
@@ -42,6 +47,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         from cobranzas.jobs.sync_asesores_runner import main as run
 
         return run()
+    if comando == "sync-feriados":
+        from cobranzas.jobs.sync_feriados_runner import main as run
+
+        return run()
     if comando == "limpieza":
         from cobranzas.jobs.runner import main as run
 
@@ -56,6 +65,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return run()
     if comando == "plantilla":
         from cobranzas.jobs.plantilla_asesores import main as run
+
+        return run()
+    if comando == "plantilla-feriados":
+        from cobranzas.jobs.plantilla_feriados import main as run
 
         return run()
     if comando == "migrar-bd":

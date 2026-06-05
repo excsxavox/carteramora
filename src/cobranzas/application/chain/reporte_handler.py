@@ -27,9 +27,12 @@ class ProcesamientoMoraHandler(Handler):
         self._tab_export = tab_detalle_export_service
 
     def _procesar(self, contexto: ProcesoContext) -> ProcesoContext:
-        creditos_mora = self._service.filtrar_en_mora(
-            contexto.creditos, contexto.dias_mora_minimo
-        )
+        if contexto.usar_mora_temprana:
+            creditos_mora = list(contexto.creditos)
+        else:
+            creditos_mora = self._service.filtrar_en_mora(
+                contexto.creditos, contexto.dias_mora_minimo
+            )
         contexto.creditos_mora = creditos_mora
         contexto.reporte = self._service.construir_reporte(
             creditos_mora, contexto.dias_mora_minimo

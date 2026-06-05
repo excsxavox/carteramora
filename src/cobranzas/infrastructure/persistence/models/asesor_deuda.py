@@ -31,6 +31,9 @@ class AsesorDeuda(Base):
         Numeric(18, 2), nullable=True
     )
     monto_mora: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2), nullable=True)
+    id_credito_recblue: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True
+    )
     fecha_asignacion: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     fecha_modificacion: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=False), nullable=True

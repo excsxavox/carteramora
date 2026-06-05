@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from cobranzas.domain.models.credito import Credito
 from cobranzas.domain.ports.cobranza_db_repository import CobranzaDbRepositoryPort
+from cobranzas.domain.ports.recblue_port import RecbluePort
 from cobranzas.infrastructure.persistence.mappers.cobranza_credito_mapper import (
     CLAVE_CLASIFICACION_MORA,
     catalogo_descripcion_clasificacion,
@@ -50,9 +51,12 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         self,
         session_factory: sessionmaker,
         dias_mora_minimo: int = 30,
+        recblue: Optional[RecbluePort] = None,
     ) -> None:
         self._session_factory = session_factory
         self._dias_mora_minimo = dias_mora_minimo
+        self._recblue = recblue
+        self._cache_recblue: Optional[dict] = None
 
     def guardar_creditos_mora(self, creditos: List[Credito]) -> int:
         with self._session_factory() as session:
@@ -265,6 +269,7 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
 
         monto, monto_inicial, monto_mora = montos_desde_credito(credito)
         estado = estado_operacion_valor(credito)
+        id_credito_recblue = self._resolver_id_credito_recblue(credito)
         ahora = datetime.utcnow()
 
         asignacion = session.scalar(
@@ -280,6 +285,7 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
                     monto=monto,
                     monto_inicial=monto_inicial,
                     monto_mora=monto_mora,
+                    id_credito_recblue=id_credito_recblue,
                     fecha_asignacion=credito.fecha_corte,
                     fecha_modificacion=ahora,
                 )
@@ -292,5 +298,17 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         asignacion.monto = monto
         asignacion.monto_inicial = monto_inicial
         asignacion.monto_mora = monto_mora
+        asignacion.id_credito_recblue = id_credito_recblue
         asignacion.fecha_asignacion = credito.fecha_corte
         asignacion.fecha_modificacion = ahora
+
+    def _resolver_id_credito_recblue(self, credito: Credito) -> Optional[str]:
+        id_rb = (credito.id_credito_recblue or "").strip()
+        if id_rb:
+            return id_rb
+        if self._recblue is None:
+            return None
+        if self._cache_recblue is None:
+            self._cache_recblue = self._recblue.id_credito_por_operacion()
+        id_rb = (self._cache_recblue.get(credito.id_credito) or "").strip()
+        return id_rb or None

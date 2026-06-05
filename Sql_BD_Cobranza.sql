@@ -121,6 +121,7 @@ CREATE TABLE [dbo].[asesores_deuda](
 	[monto] [decimal](18, 2) NULL,
 	[monto_inicial] [decimal](18, 2) NULL,
 	[monto_mora] [decimal](18, 2) NULL,
+	[id_credito_recblue] [varchar](100) NULL,
 	[fecha_asignacion] [date] NULL,
 	[fecha_modificacion] [datetime2](7) NULL,
 PRIMARY KEY CLUSTERED 

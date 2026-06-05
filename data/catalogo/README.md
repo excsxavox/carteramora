@@ -1,13 +1,21 @@
-# Catálogo de asesores
+# Catálogo (Excel)
 
-Coloque aquí el archivo Excel para el Job 0 (sincronización):
+## Asesores — Job 0
 
-**`asesores.xlsx`** (ruta por defecto en `.env`: `ARCHIVO_EXCEL_ASESORES`)
+**`asesores.xlsx`** (`ARCHIVO_EXCEL_ASESORES`)
 
-Columnas: `cedula` (o `codigo_oficial`), `nombre`, `telefono`, `email`, `activo`.
-
-Generar plantilla:
+Columnas: `cedula`, `nombre`, `numero_telefono`, `email`, `activo`.
 
 ```powershell
 python main.py plantilla
+```
+
+## Feriados — Job 0b
+
+**`dias_feriados.xlsx`** (`EXCEL_DIR` + `EXCEL_PATTERN`)
+
+Filas: descripción + fecha (M/D/Y) o rango con fecha inicio y fin.
+
+```powershell
+python main.py plantilla-feriados
 ```

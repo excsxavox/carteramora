@@ -4,6 +4,7 @@ from typing import Optional
 from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
 
+from cobranzas.infrastructure.config.database_url import resolver_database_url
 from cobranzas.infrastructure.config.settings import Settings
 from cobranzas.infrastructure.persistence.base import Base
 from cobranzas.infrastructure.persistence.session import get_engine
@@ -27,7 +28,7 @@ def prepare_database_url(database_url: str) -> str:
 
 
 def create_engine_from_settings(settings: Settings) -> Engine:
-    url = prepare_database_url(settings.database_url)
+    url = prepare_database_url(resolver_database_url(settings))
     engine = get_engine(url, echo=settings.db_echo)
     if engine.dialect.name == "sqlite":
 

@@ -23,10 +23,6 @@ def main() -> int:
     logger.info("Lee cartera: %s", settings.archivo_cartera)
     logger.info("Genera salida 1: %s", settings.archivo_salida_morosidad)
     logger.info("Genera salida 2: %s", settings.archivo_salida_mora)
-    logger.info(
-        "Logs contenido .lis: logger=cobranzas.archivo.lis | muestras=%s",
-        settings.log_muestra_mapeo,
-    )
     try:
         use_case = build_procesar_cobranzas_use_case(settings)
         result = use_case.ejecutar()
@@ -46,6 +42,12 @@ def main() -> int:
     logger.info("Archivos generados: %s | %s", result.archivo_detalle_morosidad, result.archivo_detalle_mora)
     if result.registros_persistidos_bd:
         logger.info("Registros guardados en BD: %s", result.registros_persistidos_bd)
+    if result.asignaciones_generadas:
+        logger.info(
+            "ASIGNACION.csv | filas=%s | %s",
+            result.asignaciones_generadas,
+            result.archivo_asignacion,
+        )
     return 0
 
 

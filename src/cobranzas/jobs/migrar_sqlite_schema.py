@@ -59,6 +59,7 @@ ALTERS = [
     "ALTER TABLE deuda ADD COLUMN tipo_mes VARCHAR(2)",
     "ALTER TABLE deuda ADD COLUMN tipo_fideicomiso VARCHAR(2)",
     "ALTER TABLE deuda ADD COLUMN proceso_cod INTEGER",
+    "ALTER TABLE asesores_deuda ADD COLUMN id_credito_recblue VARCHAR(100)",
 ]
 
 COPIAS = [

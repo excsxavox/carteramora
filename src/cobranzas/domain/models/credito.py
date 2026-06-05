@@ -31,6 +31,7 @@ class Credito:
     segmentacion: str = ""
     fuente_repago: str = ""
     codigo_oficial: str = ""
+    id_credito_recblue: str = ""
     campos_tab: tuple[tuple[str, str], ...] = ()
 
     def columnas_tab(self) -> tuple[str, ...]:
@@ -38,6 +39,9 @@ class Credito:
 
     def campos_tab_dict(self) -> dict[str, str]:
         return dict(self.campos_tab)
+
+    def valor_campo(self, clave: str) -> str:
+        return self.campos_tab_dict().get(clave, "").strip()
 
     def fila_tab(self, columnas: Sequence[str]) -> str:
         valores = self.campos_tab_dict()

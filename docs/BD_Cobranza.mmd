@@ -1,133 +1,134 @@
-erDiagram
-    deudores ||--o{ deuda : id_deudor
-    deuda ||--o{ asesores_deuda : id_deuda
-    asesores ||--o{ asesores_deuda : id_asesor
-    claves ||--o{ catalogo : id_clave
-
-    deudores {
-        int id_deudor PK
-        string nombre
-        string documento
-        string socio
-        datetime creado_en
-    }
-
-    deuda {
-        int id_deuda PK
-        int id_deudor FK
-        string numero_operacion UK
-        date fecha_corte
-        string archivo_origen
-        datetime fecha_carga
-        string oficina
-        string desc_oficina
-        string socio
-        string nombre
-        string cedula
-        string sector
-        string tipo_operacion
-        string tipo_destino
-        date fecha_concesion
-        date fecha_vencimiento
-        date fecha_ultimo_pago
-        decimal valor_original_prestamo
-        decimal saldo_capital_prestamo
-        string calificacion
-        decimal total_provision
-        decimal saldo_140x
-        decimal saldo_141x
-        decimal saldo_142x
-        decimal interes_normal
-        decimal interes_devengado
-        decimal interes_vencido
-        decimal interes_resolucion
-        decimal interes_castigado
-        decimal interes_mora
-        decimal otros_rubros_deuda
-        decimal total_operacion
-        string estado
-        string oficial
-        int dias_mora
-        date fecha_ingreso
-        string tipo
-        int dia_pago
-        decimal valor_cuota
-        int cuota_actual
-        int dividendos
-        string cod_oficial_asignado
-        string oficial_asignado
-        string cod_oficial_adm
-        string oficial_adm
-        string operacion_homologada
-        string decision
-        string segmentacion
-        string score
-        string fuente_repago
-        string identificacion_ifi
-        string actividad_economica
-        date fecha_archivo
-        string tipo_mes
-        string tipo_fideicomiso
-        bigint proceso_cod
-        datetime creado_en
-    }
-
-    asesores {
-        int id_asesor PK
-        string nombre
-        string cedula UK
-        string numero_telefono
-        string email
-        boolean activo
-        datetime creado_en
-    }
-
-    asesores_deuda {
-        int id_asesor_deuda PK
-        int id_catalogo
-        int id_asesor FK
-        int id_deuda FK
-        string estado
-        decimal monto
-        decimal monto_inicial
-        decimal monto_mora
-        date fecha_asignacion
-        datetime fecha_modificacion
-    }
-
-    claves {
-        int id_clave PK
-        string clave
-        string descripcion
-        boolean vigente
-        datetime fecha_creacion
-    }
-
-    catalogo {
-        int id_catalogo PK
-        int id_clave FK
-        string valor
-        string descripcion
-        boolean vigencia
-        datetime fecha_creacion
-    }
-
-    reglas {
-        int id_regla PK
-        string nombre
-        string descripcion
-        string tipo
-        string valor
-        int prioridad
-        boolean activo
-    }
-
-    logs_auditoria {
-        int id_log PK
-        string tabla
-        string operacion
-        string usuario
-        string datos_anteriores
-        string datos_nuevos
-        datetime registrado_en
-    }
+erDiagram
+    deudores ||--o{ deuda : id_deudor
+    deuda ||--o{ asesores_deuda : id_deuda
+    asesores ||--o{ asesores_deuda : id_asesor
+    claves ||--o{ catalogo : id_clave
+
+    deudores {
+        int id_deudor PK
+        string nombre
+        string documento
+        string socio
+        datetime creado_en
+    }
+
+    deuda {
+        int id_deuda PK
+        int id_deudor FK
+        string numero_operacion UK
+        date fecha_corte
+        string archivo_origen
+        datetime fecha_carga
+        string oficina
+        string desc_oficina
+        string socio
+        string nombre
+        string cedula
+        string sector
+        string tipo_operacion
+        string tipo_destino
+        date fecha_concesion
+        date fecha_vencimiento
+        date fecha_ultimo_pago
+        decimal valor_original_prestamo
+        decimal saldo_capital_prestamo
+        string calificacion
+        decimal total_provision
+        decimal saldo_140x
+        decimal saldo_141x
+        decimal saldo_142x
+        decimal interes_normal
+        decimal interes_devengado
+        decimal interes_vencido
+        decimal interes_resolucion
+        decimal interes_castigado
+        decimal interes_mora
+        decimal otros_rubros_deuda
+        decimal total_operacion
+        string estado
+        string oficial
+        int dias_mora
+        date fecha_ingreso
+        string tipo
+        int dia_pago
+        decimal valor_cuota
+        int cuota_actual
+        int dividendos
+        string cod_oficial_asignado
+        string oficial_asignado
+        string cod_oficial_adm
+        string oficial_adm
+        string operacion_homologada
+        string decision
+        string segmentacion
+        string score
+        string fuente_repago
+        string identificacion_ifi
+        string actividad_economica
+        date fecha_archivo
+        string tipo_mes
+        string tipo_fideicomiso
+        bigint proceso_cod
+        datetime creado_en
+    }
+
+    asesores {
+        int id_asesor PK
+        string nombre
+        string cedula UK
+        string numero_telefono
+        string email
+        boolean activo
+        datetime creado_en
+    }
+
+    asesores_deuda {
+        int id_asesor_deuda PK
+        int id_catalogo
+        int id_asesor FK
+        int id_deuda FK
+        string estado
+        decimal monto
+        decimal monto_inicial
+        decimal monto_mora
+        string id_credito_recblue
+        date fecha_asignacion
+        datetime fecha_modificacion
+    }
+
+    claves {
+        int id_clave PK
+        string clave
+        string descripcion
+        boolean vigente
+        datetime fecha_creacion
+    }
+
+    catalogo {
+        int id_catalogo PK
+        int id_clave FK
+        string valor
+        string descripcion
+        boolean vigencia
+        datetime fecha_creacion
+    }
+
+    reglas {
+        int id_regla PK
+        string nombre
+        string descripcion
+        string tipo
+        string valor
+        int prioridad
+        boolean activo
+    }
+
+    logs_auditoria {
+        int id_log PK
+        string tabla
+        string operacion
+        string usuario
+        string datos_anteriores
+        string datos_nuevos
+        datetime registrado_en
+    }

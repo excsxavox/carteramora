@@ -1,18 +1,24 @@
 flowchart TB
     subgraph entrada [Entradas]
         XLS[data/catalogo/asesores.xlsx]
+        XLSF[data/catalogo/*feriados*.xlsx]
         CORE1[docsmora morosidad.lis]
         CORE2[docsmora cartera.lis]
     end
 
-    subgraph job0 [Job 0 sync]
-        J0[main.py sync]
+    subgraph pipeline [main.py pipeline - cadena]
+        H0[SyncAsesoresHandler]
+        H0b[SyncFeriadosHandler]
+        H1[LimpiezaHandler]
+        H0 --> H0b --> H1
     end
 
-    subgraph job1 [Job 1 limpieza]
-        J1[main.py limpieza]
-        OUT1[detalle_morosidad.lis]
-        OUT2[reporte_mora.lis]
+    subgraph job1_interno [Job 1 - cadena limpieza]
+        L1[LecturaMorosidad]
+        L2[LecturaCartera]
+        L3[ProcesamientoMora]
+        L4[PersistenciaBD]
+        L1 --> L2 --> L3 --> L4
     end
 
     subgraph job2 [Job 2 staging]
@@ -21,23 +27,22 @@ flowchart TB
 
     subgraph bd [BD_Cobranza]
         T_AS[asesores]
+        T_CL[claves]
+        T_CAT[catalogo]
         T_DEU[deudores]
         T_DEUDA[deuda]
         T_AD[asesores_deuda]
         T_TMP[tmp_stg]
     end
 
-    XLS --> J0 --> T_AS
-    CORE1 --> J1
-    CORE2 --> J1
-    J1 --> OUT1
-    J1 --> OUT2
-    J1 --> T_DEU
-    J1 --> T_DEUDA
-    J1 --> T_AD
-    OUT1 --> J2
-    OUT2 --> J2
+    XLS --> H0 --> T_AS
+    XLSF --> H0b --> T_CL
+    H0b --> T_CAT
+    CORE1 --> H1
+    CORE2 --> H1
+    H1 --> L1
+    L4 --> T_DEU
+    L4 --> T_DEUDA
+    L4 --> T_AD
+    H1 --> J2
     J2 --> T_TMP
-
-    PIPE[main.py pipeline] -.-> J0
-    PIPE -.-> J1

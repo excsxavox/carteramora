@@ -27,8 +27,9 @@ pip install -e .
 
 | Comando | Descripción |
 |---------|-------------|
-| `python main.py` | **Pipeline:** Excel asesores + limpieza (uso diario) |
+| `python main.py` | **Todo el flujo diario** (asesores → feriados → limpieza → BD → ASIGNACION.csv) |
 | `python main.py sync` | Solo sincronizar asesores desde Excel |
+| `python main.py sync-feriados` | Solo sincronizar feriados desde Excel |
 | `python main.py limpieza` | Solo limpieza → `detalle_morosidad.lis` + `reporte_mora.lis` |
 | `python main.py staging` | Cargar `.lis` limpios a tablas `tmp_*` |
 | `python main.py init-db` | Crear tablas SQLite |
@@ -37,18 +38,18 @@ pip install -e .
 ## Primera vez
 
 ```powershell
-python main.py init-db
 python main.py plantilla
-# Editar data/catalogo/asesores.xlsx con tu catálogo real
+# Colocar dias_feriados.xlsx en data/catalogo y asesores.xlsx
 python main.py
 ```
 
 ## Flujo de jobs
 
 ```
-data/catalogo/asesores.xlsx  →  [sync]  →  tabla asesores
-docsmora/*.lis               →  [limpieza]  →  destino/*.lis
-destino/*.lis                →  [staging]  →  tmp_stg_*
+asesores.xlsx     →  [sync]         →  tabla asesores
+*feriados*.xlsx   →  [sync-feriados] →  claves + catalogo (feriados_catalogo)
+docsmora/*.lis    →  [limpieza]     →  destino/*.lis + ASIGNACION.csv + BD
+destino/*.lis     →  [staging]      →  tmp_stg_*
 ```
 
 ## Configuración (`.env`)
@@ -56,6 +57,9 @@ destino/*.lis                →  [staging]  →  tmp_stg_*
 Ver `.env.example`. Principales variables:
 
 - `ARCHIVO_EXCEL_ASESORES` — Excel de asesores
+- `DIRECTORIO_EXCEL_FERIADOS` / `PATRON_EXCEL_FERIADOS` / `CLAVE_FERIADOS` — catálogo de feriados
+- `USAR_MORA_TEMPRANA`, `MORA_TEMPRANA_DIAS_MIN/MAX`, `ESTADOS_EXCLUIDOS`, `TIPOS_OPER_EXCLUIDOS` — HU-GRC-01
+- `ASESORES_ROTACION`, `ARCHIVO_SALIDA_ASIGNACION`, `ARCHIVO_RECBLUE` — asignación y Recblue
 - `ARCHIVO_MOROSIDAD` / `ARCHIVO_CARTERA` — entradas core
 - `ARCHIVO_SALIDA_MOROSIDAD` / `ARCHIVO_SALIDA_MORA` — salidas
 - `DATABASE_URL`, `PERSISTIR_EN_BD`, `SYNC_ASESORES_RECHAZAR_DUPLICADOS`

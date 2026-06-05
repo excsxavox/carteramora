@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS asesores_deuda (
     monto NUMERIC(18, 2),
     monto_inicial NUMERIC(18, 2),
     monto_mora NUMERIC(18, 2),
+    id_credito_recblue VARCHAR(100),
     fecha_asignacion DATE,
     fecha_modificacion DATETIME,
     FOREIGN KEY (id_asesor) REFERENCES asesores (id_asesor),
