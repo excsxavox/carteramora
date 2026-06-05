@@ -1,7 +1,8 @@
-from datetime import datetime
+import logging
+from datetime import date, datetime
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -42,6 +43,9 @@ def _parse_fecha_tab(valor: str):
     return None
 
 
+logger = logging.getLogger("cobranzas.persistencia")
+
+
 class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
     """Persiste deudores, deudas, asesores y asignaciones desde cartera en mora."""
 
@@ -63,13 +67,60 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         self._cache_recblue: Optional[dict] = None
 
     def guardar_creditos_mora(self, creditos: List[Credito]) -> int:
+        if not creditos:
+            return 0
+
+        fechas = {c.fecha_corte for c in creditos}
+        if len(fechas) != 1:
+            raise ValueError(
+                "Todos los créditos del lote deben compartir la misma fecha_corte"
+            )
+        fecha_corte = next(iter(fechas))
+
         with self._session_factory() as session:
-            procesados = 0
-            for credito in creditos:
-                self._upsert_credito(session, credito)
-                procesados += 1
-            session.commit()
-        return procesados
+            try:
+                borrados = self._eliminar_lote_fecha_corte(session, fecha_corte)
+                if borrados:
+                    logger.info(
+                        "Lote %s: eliminados %s registro(s) previos "
+                        "(deuda + asesores_deuda)",
+                        fecha_corte.isoformat(),
+                        borrados,
+                    )
+
+                for credito in creditos:
+                    self._upsert_credito(session, credito)
+
+                session.commit()
+                logger.info(
+                    "Lote %s persistido | operaciones=%s",
+                    fecha_corte.isoformat(),
+                    len(creditos),
+                )
+                return len(creditos)
+            except Exception:
+                session.rollback()
+                logger.exception(
+                    "Error persistiendo lote %s; se revirtió la transacción",
+                    fecha_corte.isoformat(),
+                )
+                raise
+
+    def _eliminar_lote_fecha_corte(self, session: Session, fecha_corte: date) -> int:
+        """Borra asignaciones y deudas del corte antes de recargar el mismo día."""
+        ids_deuda = list(
+            session.scalars(
+                select(Deuda.id_deuda).where(Deuda.fecha_corte == fecha_corte)
+            ).all()
+        )
+        if not ids_deuda:
+            return 0
+
+        session.execute(
+            delete(AsesorDeuda).where(AsesorDeuda.id_deuda.in_(ids_deuda))
+        )
+        session.execute(delete(Deuda).where(Deuda.fecha_corte == fecha_corte))
+        return len(ids_deuda)
 
     def _upsert_credito(self, session: Session, credito: Credito) -> None:
         datos_deudor = mapear_deudor(credito)

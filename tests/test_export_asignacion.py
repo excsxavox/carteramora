@@ -18,7 +18,7 @@ def test_export_asignacion_solo_id_credito_y_usuario(tmp_path: Path):
             saldo_capital=1000.0,
             dias_mora=10,
             codigo_asesor="LMANOSALVAS",
-            nombre_asesor="LMANOSALVAS",
+            nombre_asesor="LUIS MANOSALVAS",
             id_credito_recblue="103102",
         ),
         AsignacionCredito(
@@ -41,7 +41,7 @@ def test_export_asignacion_solo_id_credito_y_usuario(tmp_path: Path):
         contenido = list(csv.DictReader(fh))
 
     assert list(contenido[0].keys()) == ["ID_CREDITO", "USUARIO"]
-    assert contenido == [{"ID_CREDITO": "103102", "USUARIO": "LMANOSALVAS"}]
+    assert contenido == [{"ID_CREDITO": "103102", "USUARIO": "LUIS MANOSALVAS"}]
 
 
 def test_export_usa_mapa_recblue_post_enriquecimiento(tmp_path: Path):
@@ -56,7 +56,7 @@ def test_export_usa_mapa_recblue_post_enriquecimiento(tmp_path: Path):
             saldo_capital=1.0,
             dias_mora=1,
             codigo_asesor="MARCOS",
-            nombre_asesor="MARCOS",
+            nombre_asesor="MARCOS PEREZ",
             id_credito_recblue="",
         ),
     ]
@@ -67,4 +67,4 @@ def test_export_usa_mapa_recblue_post_enriquecimiento(tmp_path: Path):
     with ruta.open(encoding="utf-8-sig", newline="") as fh:
         fila = next(csv.DictReader(fh))
 
-    assert fila == {"ID_CREDITO": "97629", "USUARIO": "MARCOS"}
+    assert fila == {"ID_CREDITO": "97629", "USUARIO": "MARCOS PEREZ"}

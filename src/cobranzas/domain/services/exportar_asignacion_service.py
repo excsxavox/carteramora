@@ -18,7 +18,7 @@ class ExportarAsignacionService:
         ids_recblue_por_operacion: Optional[Dict[str, str]] = None,
     ) -> None:
         """
-        Entregable: ID_CREDITO (export Recblue) + USUARIO (código asesor).
+        Entregable: ID_CREDITO (export Recblue) + USUARIO (nombre asesor en BD).
         Omite filas sin ID Crédito en Recblue.
         """
         ruta.parent.mkdir(parents=True, exist_ok=True)
@@ -39,7 +39,7 @@ class ExportarAsignacionService:
                 writer.writerow(
                     {
                         "ID_CREDITO": id_credito,
-                        "USUARIO": fila.codigo_asesor,
+                        "USUARIO": fila.nombre_asesor or fila.codigo_asesor,
                     }
                 )
                 exportadas += 1
