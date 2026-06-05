@@ -4,13 +4,10 @@ import logging
 from collections import defaultdict
 from dataclasses import replace
 from datetime import date
-from typing import List, Optional, Sequence, Set, Tuple
+from typing import List, Sequence, Set, Tuple
 
 from cobranzas.domain.models.credito import Credito
-from cobranzas.domain.services.dias_habiles_service import (
-    dias_mora_temprana,
-    ultimo_vencimiento_hasta,
-)
+from cobranzas.domain.services.dias_habiles_service import calcular_cuota_mora
 
 logger = logging.getLogger("cobranzas.mora_temprana")
 
@@ -73,7 +70,8 @@ class MoraTempranaService:
         log_muestra: int = 10,
     ) -> Tuple[List[Credito], dict]:
         """
-        Excluye operaciones no elegibles, recalcula días de mora y ordena por saldo DESC.
+        Excluye operaciones no elegibles, recalcula días de mora temprana
+        (solo cuota del mes de corte) y ordena por saldo DESC.
         """
         estados_excl = tuple(
             p.strip().upper() for p in estados_excluidos if p and str(p).strip()
@@ -111,23 +109,42 @@ class MoraTempranaService:
                 continue
 
             dia_pago = dia_pago_desde_credito(credito)
-            vencimiento: Optional[date] = None
+            mes_cuota = ""
             if usar_calculo_dia_pago and dia_pago > 0:
-                vencimiento = ultimo_vencimiento_hasta(
+                cuota = calcular_cuota_mora(
                     credito.fecha_corte, dia_pago, feriados
                 )
-                dias = dias_mora_temprana(credito.fecha_corte, dia_pago, feriados)
+                dias = cuota.dias
+                vencimiento = cuota.vencimiento_efectivo
+                mes_cuota = f"{cuota.anio_cuota:04d}-{cuota.mes_cuota:02d}"
                 origen_dias = "dia_pago"
+
+                if cuota.clasificacion == "mora_madura":
+                    _log_decision(
+                        "mora_madura",
+                        f"Mora | op={op} | MORA_MADURA | dias={dias} | mes_cuota={mes_cuota} "
+                        f"| dia_pago={dia_pago} | venc_efectivo={vencimiento} "
+                        f"| corte={credito.fecha_corte} | motivo=cuota_mes_anterior",
+                    )
+                    continue
             else:
                 dias = credito.dias_mora
+                vencimiento = None
                 origen_dias = "camorosico"
                 if usar_calculo_dia_pago:
                     sin_dia_pago += 1
+                    _log_decision(
+                        "sin_dia_pago_clasificar",
+                        f"Mora | op={op} | NO_TEMPRANA | dias_camorosico={dias} "
+                        f"| motivo=sin_dia_pago_para_mes_cuota",
+                    )
+                    continue
 
             venc_str = vencimiento.isoformat() if vencimiento else "n/a"
             base_detalle = (
                 f"dias={dias} | origen={origen_dias} | dia_pago={dia_pago} "
-                f"| venc_efectivo={venc_str} | corte={credito.fecha_corte}"
+                f"| mes_cuota={mes_cuota} | venc_efectivo={venc_str} "
+                f"| corte={credito.fecha_corte}"
             )
 
             if dias < dias_min:
@@ -153,30 +170,36 @@ class MoraTempranaService:
         elegibles.sort(key=saldo_capital_desde_credito, reverse=True)
 
         excluidos = contadores["excluido_regla"]
+        madura = contadores["mora_madura"]
         fuera_bajo = contadores["fuera_rango_bajo"]
         fuera_alto = contadores["fuera_rango_alto"]
+        sin_dia_pago_clasificar = contadores["sin_dia_pago_clasificar"]
 
         metricas = {
             "total_entrada": len(creditos),
             "excluidos_regla": excluidos,
+            "mora_madura_mes_anterior": madura,
             "fuera_rango_bajo": fuera_bajo,
             "fuera_rango_alto": fuera_alto,
             "sin_dia_pago": sin_dia_pago,
+            "sin_dia_pago_clasificar": sin_dia_pago_clasificar,
             "en_mora_temprana": len(elegibles),
             "dias_min": dias_min,
             "dias_max": dias_max,
         }
         logger.info(
-            "Mora resumen | entrada=%s | excluidos_regla=%s | fuera_rango "
-            "(dias<%s)=%s | fuera_rango (dias>%s)=%s | elegibles=%s | sin_dia_pago=%s",
+            "Mora resumen | entrada=%s | excluidos_regla=%s | mora_madura=%s | "
+            "fuera_rango (dias<%s)=%s | fuera_rango (dias>%s)=%s | "
+            "sin_dia_pago=%s | elegibles=%s",
             metricas["total_entrada"],
             excluidos,
+            madura,
             dias_min,
             fuera_bajo,
             dias_max,
             fuera_alto,
+            sin_dia_pago_clasificar,
             len(elegibles),
-            sin_dia_pago,
         )
         if log_muestra == 0:
             logger.info(

@@ -18,6 +18,7 @@ from cobranzas.infrastructure.adapters.tsv_credito_repository import (
 from cobranzas.infrastructure.adapters.tsv_cartera_repository import (
     TsvCarteraRepository,
 )
+from cobranzas.infrastructure.config.database_url import resolver_database_url
 from cobranzas.infrastructure.config.settings import Settings
 from cobranzas.infrastructure.persistence.database import (
     create_engine_from_settings,
@@ -116,7 +117,7 @@ def build_procesar_cobranzas_use_case(
         archivo_detalle_mora=cfg.archivo_salida_mora,
         persistir_service=persistir_service,
         persistir_en_bd=cfg.persistir_en_bd,
-        database_url=cfg.database_url,
+        database_url=resolver_database_url(cfg),
         usar_mora_temprana=cfg.usar_mora_temprana,
         mora_temprana_dias_min=cfg.mora_temprana_dias_min,
         mora_temprana_dias_max=cfg.mora_temprana_dias_max,

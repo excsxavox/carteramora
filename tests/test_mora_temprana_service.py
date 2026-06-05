@@ -44,3 +44,41 @@ def test_filtra_por_dias_mora_temprana():
     )
     assert metricas["total_entrada"] == 2
     assert all(c.dias_mora >= 1 for c in elegibles)
+
+
+def test_excluye_mora_madura_mes_anterior():
+    servicio = MoraTempranaService()
+    credito = _credito(
+        id_credito="MADURA",
+        fecha_corte=date(2026, 4, 6),
+        campos_tab=(("dia_pago", "24"),),
+    )
+    elegibles, metricas = servicio.procesar(
+        [credito],
+        feriados=set(),
+        dias_min=1,
+        dias_max=29,
+        estados_excluidos=(),
+        tipos_oper_excluidos=(),
+    )
+    assert len(elegibles) == 0
+    assert metricas["mora_madura_mes_anterior"] == 1
+
+
+def test_sin_dia_pago_no_entra_en_temprana():
+    servicio = MoraTempranaService()
+    credito = _credito(
+        id_credito="SIN_DP",
+        dias_mora=10,
+        campos_tab=(),
+    )
+    elegibles, metricas = servicio.procesar(
+        [credito],
+        feriados=set(),
+        dias_min=1,
+        dias_max=29,
+        estados_excluidos=(),
+        tipos_oper_excluidos=(),
+    )
+    assert len(elegibles) == 0
+    assert metricas["sin_dia_pago_clasificar"] == 1
