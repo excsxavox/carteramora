@@ -100,7 +100,7 @@ class Settings(BaseSettings):
         description="Si true, exclusiones y rango días desde tabla reglas",
     )
     mora_temprana_dias_min: int = Field(default=1, alias="MORA_TEMPRANA_DIAS_MIN")
-    mora_temprana_dias_max: int = Field(default=29, alias="MORA_TEMPRANA_DIAS_MAX")
+    mora_temprana_dias_max: int = Field(default=1, alias="MORA_TEMPRANA_DIAS_MAX")
     estados_excluidos: str = Field(
         default="CASTIGADO,JUDICIAL,GESTION JUDICIAL",
         alias="ESTADOS_EXCLUIDOS",
@@ -144,6 +144,11 @@ class Settings(BaseSettings):
     )
     api_host: str = Field(default="127.0.0.1", alias="API_HOST")
     api_port: int = Field(default=8000, alias="API_PORT")
+    deferir_resolucion_rutas: bool = Field(
+        default=False,
+        alias="DEFERIR_RESOLUCION_RUTAS",
+        description="Si true, no valida carpetas .lis al cargar Settings (modo API)",
+    )
 
     @model_validator(mode="after")
     def _aplicar_rutas_automaticas(self) -> "Settings":
@@ -151,7 +156,13 @@ class Settings(BaseSettings):
             self._validar_rutas_manuales()
             return self
 
-        fecha = parsear_fecha_corte(self.fecha_corte) if self.fecha_corte else None
+        if self.deferir_resolucion_rutas:
+            return self
+
+        if not self.fecha_corte:
+            return self
+
+        fecha = parsear_fecha_corte(self.fecha_corte)
         rutas = resolver_rutas_cartera(
             self.directorio_docsmora,
             self.directorio_destino,

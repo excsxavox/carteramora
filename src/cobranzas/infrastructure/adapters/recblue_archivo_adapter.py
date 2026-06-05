@@ -176,6 +176,18 @@ class RecblueArchivoAdapter(RecbluePort):
         )
         return mapa
 
+    def operaciones_por_id_credito(self, id_credito: str) -> List[Dict[str, str]]:
+        """Operaciones core vinculadas a un ID Crédito Recblue (puede haber más de una)."""
+        id_buscado = (id_credito or "").strip()
+        if not id_buscado:
+            return []
+        mapa = self.id_credito_por_operacion()
+        return [
+            {"numero_operacion": op, "id_credito_recblue": id_rb}
+            for op, id_rb in mapa.items()
+            if id_rb.replace(".0", "") == id_buscado.replace(".0", "")
+        ]
+
     def registro_por_operacion(self, numero_operacion: str) -> Optional[Dict[str, str]]:
         """Fila Recblue normalizada (id, operación, identificación, socio)."""
         if self._archivo is None or not self._archivo.is_file():

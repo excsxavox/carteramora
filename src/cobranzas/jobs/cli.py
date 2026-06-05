@@ -40,6 +40,18 @@ def _parser() -> argparse.ArgumentParser:
         "api",
         help="Servidor HTTP: POST /pipeline con body {\"fecha\": \"MMDDYYYY\"}",
     )
+    p_seguir = sub.add_parser(
+        "seguir-credito",
+        help="Trazabilidad de un ID Recblue u operación core en el pipeline",
+    )
+    p_seguir.add_argument(
+        "identificador",
+        help="ID Crédito Recblue (ej. 27854) o número de operación",
+    )
+    p_seguir.add_argument(
+        "--fecha",
+        help="Fecha corte MMDDYYYY o YYYY-MM-DD",
+    )
     return parser
 
 
@@ -91,6 +103,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         from cobranzas.jobs.api_runner import main as run
 
         return run()
+    if comando == "seguir-credito":
+        from cobranzas.jobs.seguir_credito_runner import ejecutar_seguimiento
+
+        return ejecutar_seguimiento(args.identificador, fecha=args.fecha)
 
     _parser().print_help()
     return 1

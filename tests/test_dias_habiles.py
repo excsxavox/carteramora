@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 from cobranzas.domain.services.dias_habiles_service import (
     calcular_cuota_mora,
+    contar_dias_mora_habiles,
     dias_mora_temprana,
     siguiente_dia_habil,
     vencimiento_efectivo,
@@ -19,10 +20,8 @@ def test_mora_un_dia_despues_del_vencimiento_habil():
     venc = vencimiento_efectivo(2026, 5, 30, feriados)
     assert dias_mora_temprana(venc, 30, feriados) == 0
     martes = venc + timedelta(days=1)
-    # Cuota de mayo impaga en junio ? mora madura, no temprana
-    assert dias_mora_temprana(martes, 30, feriados) == 0
     resultado = calcular_cuota_mora(martes, 30, feriados)
-    assert resultado.clasificacion == "mora_madura"
+    assert resultado.clasificacion == "mora_temprana"
     assert resultado.dias == 1
 
 
@@ -32,21 +31,56 @@ def test_mora_temprana_solo_cuota_del_mes_de_corte():
     resultado = calcular_cuota_mora(corte, 15, feriados)
     assert resultado.clasificacion == "mora_temprana"
     assert resultado.mes_cuota == 6
-    assert resultado.dias == 5
-    assert dias_mora_temprana(corte, 15, feriados) == 5
+    assert resultado.dias == 4
+    assert dias_mora_temprana(corte, 15, feriados) == 4
 
 
-def test_cuota_mes_anterior_es_mora_madura():
+def test_cuota_vencida_mes_previo_cuenta_dias_en_rango():
     feriados: set[date] = set()
     corte = date(2026, 4, 6)
     resultado = calcular_cuota_mora(corte, 24, feriados)
-    assert resultado.clasificacion == "mora_madura"
+    assert resultado.clasificacion == "mora_temprana"
     assert resultado.mes_cuota == 3
-    assert resultado.dias == 13
-    assert dias_mora_temprana(corte, 24, feriados) == 0
+    assert resultado.dias == 9
+    assert dias_mora_temprana(corte, 24, feriados) == 9
+
+
+def test_dias_mora_excluye_fin_de_semana():
+    feriados: set[date] = set()
+    venc = date(2026, 6, 5)  # viernes
+    corte = date(2026, 6, 8)  # lunes
+    assert contar_dias_mora_habiles(venc, corte, feriados) == 1
+
+
+def test_dias_mora_excluye_feriado_en_periodo():
+    feriados = {date(2026, 6, 17)}
+    venc = date(2026, 6, 15)
+    corte = date(2026, 6, 19)
+    assert contar_dias_mora_habiles(venc, corte, feriados) == 3
 
 
 def test_feriado_mueve_vencimiento():
     feriados = {date(2026, 6, 1)}
     nominal = date(2026, 6, 1)
     assert siguiente_dia_habil(nominal, feriados) == date(2026, 6, 2)
+
+
+def test_ultimo_pago_marzo_excluye_mora_en_abril():
+    feriados: set[date] = set()
+    corte = date(2026, 4, 6)
+    resultado = calcular_cuota_mora(
+        corte, 30, feriados, ultimo_pago=date(2026, 3, 30)
+    )
+    assert resultado.clasificacion == "al_dia"
+    assert resultado.dias == 0
+
+
+def test_ultimo_pago_posterior_al_corte_no_cuenta():
+    feriados: set[date] = set()
+    corte = date(2026, 4, 6)
+    resultado = calcular_cuota_mora(
+        corte, 30, feriados, ultimo_pago=date(2026, 5, 19)
+    )
+    assert resultado.clasificacion == "mora_temprana"
+    assert resultado.mes_cuota == 3
+    assert resultado.dias == 4

@@ -4,10 +4,13 @@ import logging
 from collections import defaultdict
 from dataclasses import replace
 from datetime import date
-from typing import List, Sequence, Set, Tuple
+from typing import List, Optional, Sequence, Set, Tuple
 
 from cobranzas.domain.models.credito import Credito
-from cobranzas.domain.services.dias_habiles_service import calcular_cuota_mora
+from cobranzas.domain.services.dias_habiles_service import (
+    calcular_cuota_mora,
+    parse_fecha_cadetacaco,
+)
 
 logger = logging.getLogger("cobranzas.mora_temprana")
 
@@ -34,26 +37,65 @@ def dia_pago_desde_credito(credito: Credito) -> int:
     return _parse_int_seguro(credito.valor_campo("dia_pago"))
 
 
+def fecha_ultimo_pago_desde_credito(credito: Credito) -> Optional[date]:
+    """
+    Último abono en CADETACACO (prioriza FECHA ULTIMO PAGO/ULTIMO ABONO).
+    Solo fechas <= fecha de corte se usan en la regla de cuota impaga.
+    """
+    for clave in ("fecha_ultimo_pago_ultimo_abono", "fecha_ultimo_pago"):
+        parsed = parse_fecha_cadetacaco(credito.valor_campo(clave))
+        if parsed is not None:
+            if parsed <= credito.fecha_corte:
+                return parsed
+    return None
+
+
+def dias_atraso_camorosico(credito: Credito) -> int:
+    """Referencia CAMOROSICO (columna S / DIAS ATRASO); no define la regla de días."""
+    return int(credito.dias_mora or 0)
+
+
+def _valores_estado(credito: Credito) -> Tuple[str, ...]:
+    """CADETACACO (EST) tiene prioridad sobre CAMOROSICO (ESTADO)."""
+    vistos: set[str] = set()
+    ordenados: list[str] = []
+    for raw in (
+        credito.valor_campo("est"),
+        credito.valor_campo("estado"),
+        credito.estado_operacion,
+    ):
+        texto = (raw or "").strip().upper()
+        if texto and texto not in vistos:
+            vistos.add(texto)
+            ordenados.append(texto)
+    return tuple(ordenados)
+
+
+def _valores_tipo_oper(credito: Credito) -> Tuple[str, ...]:
+    """CADETACACO (TIPO OPER.) tiene prioridad sobre CAMOROSICO."""
+    vistos: set[str] = set()
+    ordenados: list[str] = []
+    for raw in (credito.valor_campo("tipo_oper"), credito.tipo_operacion):
+        texto = (raw or "").strip().upper()
+        if texto and texto not in vistos:
+            vistos.add(texto)
+            ordenados.append(texto)
+    return tuple(ordenados)
+
+
 def debe_excluir_operacion(
     credito: Credito,
     estados_excluidos: Sequence[str],
     tipos_oper_excluidos: Sequence[str],
 ) -> Tuple[bool, str]:
-    estado = (
-        credito.estado_operacion
-        or credito.valor_campo("est")
-        or credito.valor_campo("estado")
-    ).upper()
-    tipo_oper = (
-        credito.tipo_operacion or credito.valor_campo("tipo_oper")
-    ).upper()
-
-    for patron in estados_excluidos:
-        if patron and patron in estado:
-            return True, f"estado={estado}"
-    for patron in tipos_oper_excluidos:
-        if patron and patron in tipo_oper:
-            return True, f"tipo_oper={tipo_oper}"
+    for estado in _valores_estado(credito):
+        for patron in estados_excluidos:
+            if patron and patron in estado:
+                return True, f"estado={estado}"
+    for tipo_oper in _valores_tipo_oper(credito):
+        for patron in tipos_oper_excluidos:
+            if patron and patron in tipo_oper:
+                return True, f"tipo_oper={tipo_oper}"
     return False, ""
 
 
@@ -70,8 +112,12 @@ class MoraTempranaService:
         log_muestra: int = 10,
     ) -> Tuple[List[Credito], dict]:
         """
-        Excluye operaciones no elegibles, recalcula días de mora temprana
-        (solo cuota del mes de corte) y ordena por saldo DESC.
+        Excluye operaciones no elegibles para mora temprana.
+
+        - Días de mora: DIA PAGO + vencimiento hábil + conteo solo en días hábiles.
+        - Cuota impaga: vencida al corte sin pago >= vencimiento (FECHA ULTIMO PAGO).
+        - Elegible solo con exactamente 1 día hábil de mora (feriados/fines de semana).
+        - CAMOROSICO (DIAS ATRASO) solo se registra como referencia en logs.
         """
         estados_excl = tuple(
             p.strip().upper() for p in estados_excluidos if p and str(p).strip()
@@ -108,42 +154,40 @@ class MoraTempranaService:
                 )
                 continue
 
+            ref_camorosico = dias_atraso_camorosico(credito)
             dia_pago = dia_pago_desde_credito(credito)
-            mes_cuota = ""
-            if usar_calculo_dia_pago and dia_pago > 0:
-                cuota = calcular_cuota_mora(
-                    credito.fecha_corte, dia_pago, feriados
+
+            if not usar_calculo_dia_pago or dia_pago <= 0:
+                sin_dia_pago += 1
+                _log_decision(
+                    "sin_dia_pago",
+                    f"Mora | op={op} | NO_TEMPRANA | ref_camorosico={ref_camorosico} "
+                    f"| motivo=sin_dia_pago",
                 )
-                dias = cuota.dias
-                vencimiento = cuota.vencimiento_efectivo
-                mes_cuota = f"{cuota.anio_cuota:04d}-{cuota.mes_cuota:02d}"
-                origen_dias = "dia_pago"
+                continue
 
-                if cuota.clasificacion == "mora_madura":
-                    _log_decision(
-                        "mora_madura",
-                        f"Mora | op={op} | MORA_MADURA | dias={dias} | mes_cuota={mes_cuota} "
-                        f"| dia_pago={dia_pago} | venc_efectivo={vencimiento} "
-                        f"| corte={credito.fecha_corte} | motivo=cuota_mes_anterior",
-                    )
-                    continue
-            else:
-                dias = credito.dias_mora
-                vencimiento = None
-                origen_dias = "camorosico"
-                if usar_calculo_dia_pago:
-                    sin_dia_pago += 1
-                    _log_decision(
-                        "sin_dia_pago_clasificar",
-                        f"Mora | op={op} | NO_TEMPRANA | dias_camorosico={dias} "
-                        f"| motivo=sin_dia_pago_para_mes_cuota",
-                    )
-                    continue
+            ultimo_pago = fecha_ultimo_pago_desde_credito(credito)
+            cuota = calcular_cuota_mora(
+                credito.fecha_corte, dia_pago, feriados, ultimo_pago=ultimo_pago
+            )
+            dias = cuota.dias
+            vencimiento = cuota.vencimiento_efectivo
+            mes_cuota = f"{cuota.anio_cuota:04d}-{cuota.mes_cuota:02d}"
+            ultimo_pago_str = ultimo_pago.isoformat() if ultimo_pago else "n/a"
 
-            venc_str = vencimiento.isoformat() if vencimiento else "n/a"
+            if cuota.clasificacion == "al_dia":
+                _log_decision(
+                    "cuota_al_dia",
+                    f"Mora | op={op} | AL_DIA | ref_camorosico={ref_camorosico} "
+                    f"| ultimo_pago={ultimo_pago_str} | dia_pago={dia_pago} "
+                    f"| corte={credito.fecha_corte} | motivo=cuota_pagada_o_sin_venc",
+                )
+                continue
+
             base_detalle = (
-                f"dias={dias} | origen={origen_dias} | dia_pago={dia_pago} "
-                f"| mes_cuota={mes_cuota} | venc_efectivo={venc_str} "
+                f"dias={dias} | origen=dia_pago | ref_camorosico={ref_camorosico} "
+                f"| dia_pago={dia_pago} | ultimo_pago={ultimo_pago_str} "
+                f"| mes_cuota={mes_cuota} | venc_efectivo={vencimiento} "
                 f"| corte={credito.fecha_corte}"
             )
 
@@ -170,35 +214,32 @@ class MoraTempranaService:
         elegibles.sort(key=saldo_capital_desde_credito, reverse=True)
 
         excluidos = contadores["excluido_regla"]
-        madura = contadores["mora_madura"]
         fuera_bajo = contadores["fuera_rango_bajo"]
         fuera_alto = contadores["fuera_rango_alto"]
-        sin_dia_pago_clasificar = contadores["sin_dia_pago_clasificar"]
 
         metricas = {
             "total_entrada": len(creditos),
             "excluidos_regla": excluidos,
-            "mora_madura_mes_anterior": madura,
+            "mora_madura_mes_anterior": 0,
             "fuera_rango_bajo": fuera_bajo,
             "fuera_rango_alto": fuera_alto,
             "sin_dia_pago": sin_dia_pago,
-            "sin_dia_pago_clasificar": sin_dia_pago_clasificar,
             "en_mora_temprana": len(elegibles),
             "dias_min": dias_min,
             "dias_max": dias_max,
         }
         logger.info(
-            "Mora resumen | entrada=%s | excluidos_regla=%s | mora_madura=%s | "
+            "Mora resumen | entrada=%s | excluidos_regla=%s | "
             "fuera_rango (dias<%s)=%s | fuera_rango (dias>%s)=%s | "
-            "sin_dia_pago=%s | elegibles=%s",
+            "sin_dia_pago=%s | al_dia=%s | elegibles=%s | dias_origen=dia_pago",
             metricas["total_entrada"],
             excluidos,
-            madura,
             dias_min,
             fuera_bajo,
             dias_max,
             fuera_alto,
-            sin_dia_pago_clasificar,
+            sin_dia_pago,
+            contadores["cuota_al_dia"],
             len(elegibles),
         )
         if log_muestra == 0:

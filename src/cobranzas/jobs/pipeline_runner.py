@@ -22,9 +22,16 @@ logger = logging.getLogger("cobranzas.pipeline")
 
 def build_settings(fecha_corte: Optional[str] = None) -> Settings:
     """Settings desde .env; si hay fecha, resuelve rutas docsmora para ese día."""
-    overrides: dict = {"USAR_RUTAS_AUTOMATICAS": True}
+    import os
+
+    overrides: dict = {
+        "USAR_RUTAS_AUTOMATICAS": True,
+        "DEFERIR_RESOLUCION_RUTAS": False,
+    }
     if fecha_corte:
         overrides["FECHA_CORTE"] = normalizar_fecha_corte(fecha_corte)
+    elif not os.getenv("FECHA_CORTE", "").strip():
+        overrides["FECHA_CORTE"] = fecha_corte_mmddyyyy()
     return Settings(**overrides)
 
 

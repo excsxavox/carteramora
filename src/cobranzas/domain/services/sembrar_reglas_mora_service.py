@@ -53,7 +53,7 @@ _REGULAS_INICIALES: Tuple[ReglaNegocio, ...] = (
     ReglaNegocio(
         nombre="Mora temprana días máximo",
         tipo=MORA_TEMPRANA_DIAS_MAX,
-        valor="29",
+        valor="1",
         prioridad=0,
     ),
 )
@@ -118,7 +118,7 @@ class SembrarReglasMoraService:
         estados_excluidos: Sequence[str] = (),
         tipos_oper_excluidos: Sequence[str] = (),
         dias_min: int = 1,
-        dias_max: int = 29,
+        dias_max: int = 1,
     ) -> int:
         if self._repo.contar_reglas() > 0:
             return 0

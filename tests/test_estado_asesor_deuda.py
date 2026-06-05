@@ -21,7 +21,7 @@ def test_estado_asignacion_mora_temprana_en_asesores_deuda():
         dias_mora_minimo=30,
         usar_mora_temprana=True,
         mora_temprana_dias_min=1,
-        mora_temprana_dias_max=29,
+        mora_temprana_dias_max=1,
     )
     assert estado == ESTADO_ASESOR_MORA_TEMPRANA
     assert cat_valor == "mora_temprana"

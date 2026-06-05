@@ -17,7 +17,7 @@ def main() -> int:
         )
         raise SystemExit(1) from exc
 
-    settings = Settings()
+    settings = Settings(DEFERIR_RESOLUCION_RUTAS=True)
     _configure_logging(settings.log_level)
     base = f"http://{settings.api_host}:{settings.api_port}"
     logger.info("API en %s", base)

@@ -77,7 +77,7 @@ def clasificacion_para_asignacion(
     dias_mora_minimo: int,
     usar_mora_temprana: bool = False,
     mora_temprana_dias_min: int = 1,
-    mora_temprana_dias_max: int = 29,
+    mora_temprana_dias_max: int = 1,
 ) -> Tuple[str, str, str]:
     """
     Clasificación de cobranza para asesores_deuda.
