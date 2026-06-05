@@ -17,6 +17,15 @@ class ExportAsignacionHandler(Handler):
     def _procesar(self, contexto: ProcesoContext) -> ProcesoContext:
         if not contexto.asignaciones:
             return contexto
-        self._export.exportar_csv(contexto.archivo_asignacion, contexto.asignaciones)
+        ids_recblue = {
+            c.id_credito: (c.id_credito_recblue or "").strip()
+            for c in contexto.creditos_mora
+            if (c.id_credito_recblue or "").strip()
+        }
+        self._export.exportar_csv(
+            contexto.archivo_asignacion,
+            contexto.asignaciones,
+            ids_recblue_por_operacion=ids_recblue,
+        )
         logger.info("Entregable: %s", contexto.archivo_asignacion)
         return contexto

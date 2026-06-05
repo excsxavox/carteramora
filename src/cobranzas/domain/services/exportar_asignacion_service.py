@@ -1,45 +1,57 @@
 import csv
 import logging
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Optional
 
 from cobranzas.domain.models.asignacion_credito import AsignacionCredito
 
 logger = logging.getLogger("cobranzas.asignacion.export")
 
-COLUMNAS_CSV = (
-    "fecha_corte",
-    "nombre",
-    "identificacion",
-    "socio",
-    "numero_operacion",
-    "saldo_capital",
-    "dias_mora",
-    "codigo_asesor",
-    "nombre_asesor",
-    "id_credito_recblue",
-)
+COLUMNAS_CSV = ("ID_CREDITO", "USUARIO")
 
 
 class ExportarAsignacionService:
-    def exportar_csv(self, ruta: Path, asignaciones: List[AsignacionCredito]) -> None:
+    def exportar_csv(
+        self,
+        ruta: Path,
+        asignaciones: List[AsignacionCredito],
+        ids_recblue_por_operacion: Optional[Dict[str, str]] = None,
+    ) -> None:
+        """
+        Entregable: ID_CREDITO (export Recblue) + USUARIO (código asesor).
+        Omite filas sin ID Crédito en Recblue.
+        """
         ruta.parent.mkdir(parents=True, exist_ok=True)
+        mapa = ids_recblue_por_operacion or {}
+        exportadas = 0
+        omitidas = 0
+
         with ruta.open("w", encoding="utf-8-sig", newline="") as fh:
             writer = csv.DictWriter(fh, fieldnames=COLUMNAS_CSV)
             writer.writeheader()
             for fila in asignaciones:
+                id_credito = (
+                    mapa.get(fila.numero_operacion) or fila.id_credito_recblue or ""
+                ).strip()
+                if not id_credito:
+                    omitidas += 1
+                    continue
                 writer.writerow(
                     {
-                        "fecha_corte": fila.fecha_corte.isoformat(),
-                        "nombre": fila.nombre,
-                        "identificacion": fila.identificacion,
-                        "socio": fila.socio,
-                        "numero_operacion": fila.numero_operacion,
-                        "saldo_capital": f"{fila.saldo_capital:.2f}",
-                        "dias_mora": fila.dias_mora,
-                        "codigo_asesor": fila.codigo_asesor,
-                        "nombre_asesor": fila.nombre_asesor,
-                        "id_credito_recblue": fila.id_credito_recblue,
+                        "ID_CREDITO": id_credito,
+                        "USUARIO": fila.codigo_asesor,
                     }
                 )
-        logger.info("ASIGNACION.csv generado: %s (%s filas)", ruta, len(asignaciones))
+                exportadas += 1
+
+        if omitidas:
+            logger.warning(
+                "ASIGNACION.csv: %s filas sin ID Crédito Recblue (omitidas)",
+                omitidas,
+            )
+        logger.info(
+            "ASIGNACION.csv generado: %s (%s filas, %s omitidas)",
+            ruta,
+            exportadas,
+            omitidas,
+        )
