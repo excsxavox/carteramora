@@ -10,11 +10,9 @@ from cobranzas.domain.ports.cobranza_db_repository import CobranzaDbRepositoryPo
 from cobranzas.domain.ports.recblue_port import RecbluePort
 from cobranzas.infrastructure.persistence.mappers.cobranza_credito_mapper import (
     CLAVE_CLASIFICACION_MORA,
-    catalogo_descripcion_clasificacion,
     cedula_asesor,
-    clasificacion_mora_valor,
+    clasificacion_para_asignacion,
     codigo_asesor,
-    estado_operacion_valor,
     montos_desde_credito,
     nombre_asesor,
 )
@@ -52,10 +50,16 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         session_factory: sessionmaker,
         dias_mora_minimo: int = 30,
         recblue: Optional[RecbluePort] = None,
+        usar_mora_temprana: bool = False,
+        mora_temprana_dias_min: int = 1,
+        mora_temprana_dias_max: int = 29,
     ) -> None:
         self._session_factory = session_factory
         self._dias_mora_minimo = dias_mora_minimo
         self._recblue = recblue
+        self._usar_mora_temprana = usar_mora_temprana
+        self._mora_temprana_dias_min = mora_temprana_dias_min
+        self._mora_temprana_dias_max = mora_temprana_dias_max
         self._cache_recblue: Optional[dict] = None
 
     def guardar_creditos_mora(self, creditos: List[Credito]) -> int:
@@ -74,10 +78,25 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         deuda = self._obtener_o_crear_deuda(session, datos_deuda, deudor.id_deudor)
         self._actualizar_deuda(deuda, datos_deuda)
 
-        id_catalogo = self._resolver_id_catalogo_mora(session, credito)
+        cat_valor, cat_desc, estado_asignacion = clasificacion_para_asignacion(
+            credito,
+            self._dias_mora_minimo,
+            usar_mora_temprana=self._usar_mora_temprana,
+            mora_temprana_dias_min=self._mora_temprana_dias_min,
+            mora_temprana_dias_max=self._mora_temprana_dias_max,
+        )
+        id_clave = self._obtener_o_crear_clave(session, CLAVE_CLASIFICACION_MORA)
+        id_catalogo = self._obtener_o_crear_catalogo(
+            session, id_clave, cat_valor, cat_desc
+        )
         id_asesor = self._obtener_o_crear_asesor(session, credito)
         self._upsert_asesor_deuda(
-            session, credito, deuda.id_deuda, id_asesor, id_catalogo
+            session,
+            credito,
+            deuda.id_deuda,
+            id_asesor,
+            id_catalogo,
+            estado_asignacion,
         )
 
     def _obtener_o_crear_deudor(self, session: Session, datos) -> Deudor:
@@ -244,18 +263,6 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
             session.flush()
         return catalogo.id_catalogo
 
-    def _resolver_id_catalogo_mora(
-        self, session: Session, credito: Credito
-    ) -> int:
-        estado = credito.clasificar_mora(self._dias_mora_minimo)
-        id_clave = self._obtener_o_crear_clave(session, CLAVE_CLASIFICACION_MORA)
-        return self._obtener_o_crear_catalogo(
-            session,
-            id_clave,
-            clasificacion_mora_valor(credito, self._dias_mora_minimo),
-            catalogo_descripcion_clasificacion(estado),
-        )
-
     def _upsert_asesor_deuda(
         self,
         session: Session,
@@ -263,12 +270,12 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         id_deuda: int,
         id_asesor: Optional[int],
         id_catalogo: int,
+        estado_asignacion: str,
     ) -> None:
         if id_asesor is None:
             return
 
         monto, monto_inicial, monto_mora = montos_desde_credito(credito)
-        estado = estado_operacion_valor(credito)
         id_credito_recblue = self._resolver_id_credito_recblue(credito)
         ahora = datetime.utcnow()
 
@@ -281,7 +288,7 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
                     id_catalogo=id_catalogo,
                     id_asesor=id_asesor,
                     id_deuda=id_deuda,
-                    estado=estado,
+                    estado=estado_asignacion,
                     monto=monto,
                     monto_inicial=monto_inicial,
                     monto_mora=monto_mora,
@@ -294,7 +301,7 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
 
         asignacion.id_catalogo = id_catalogo
         asignacion.id_asesor = id_asesor
-        asignacion.estado = estado
+        asignacion.estado = estado_asignacion
         asignacion.monto = monto
         asignacion.monto_inicial = monto_inicial
         asignacion.monto_mora = monto_mora

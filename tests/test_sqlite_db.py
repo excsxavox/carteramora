@@ -119,7 +119,8 @@ def test_persistir_credito_mora(tmp_path: Path):
         asignacion = session.query(AsesorDeuda).filter_by(id_deuda=deuda.id_deuda).one()
         assert asignacion.id_asesor == asesor.id_asesor
         assert asignacion.id_catalogo == catalogo.id_catalogo
-        assert asignacion.estado == "VIGENTE"
+        assert asignacion.estado == "MORA_GRAVE"
+        assert deuda.estado == "VIGENTE"
         assert float(asignacion.monto) == 1200.50
         assert float(asignacion.monto_inicial) == 5000.00
         assert float(asignacion.monto_mora) == 611.30

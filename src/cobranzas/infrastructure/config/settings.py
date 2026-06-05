@@ -74,6 +74,11 @@ class Settings(BaseSettings):
     )
     dias_mora_minimo: int = Field(default=30, alias="DIAS_MORA_MINIMO")
     usar_mora_temprana: bool = Field(default=True, alias="USAR_MORA_TEMPRANA")
+    usar_reglas_bd: bool = Field(
+        default=True,
+        alias="USAR_REGLAS_BD",
+        description="Si true, exclusiones y rango días desde tabla reglas",
+    )
     mora_temprana_dias_min: int = Field(default=1, alias="MORA_TEMPRANA_DIAS_MIN")
     mora_temprana_dias_max: int = Field(default=29, alias="MORA_TEMPRANA_DIAS_MAX")
     estados_excluidos: str = Field(

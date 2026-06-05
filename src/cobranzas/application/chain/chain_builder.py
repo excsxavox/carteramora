@@ -20,6 +20,9 @@ from cobranzas.domain.services.cobranzas_service import CobranzasService
 from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
 from cobranzas.domain.services.exportar_asignacion_service import ExportarAsignacionService
 from cobranzas.domain.services.mora_temprana_service import MoraTempranaService
+from cobranzas.domain.services.resolver_reglas_mora_service import (
+    ResolverReglasMoraService,
+)
 from cobranzas.domain.services.persistir_cartera_mora_service import (
     PersistirCarteraMoraService,
 )
@@ -38,6 +41,7 @@ def build_proceso_chain(
     persistir_service: Optional[PersistirCarteraMoraService] = None,
     usar_mora_temprana: bool = False,
     feriados_repository: Optional[FeriadosCalendarioPort] = None,
+    reglas_resolver: Optional[ResolverReglasMoraService] = None,
     asignacion_service: Optional[AsignacionCarteraService] = None,
     recblue_adapter: Optional[RecblueArchivoAdapter] = None,
 ) -> Handler:
@@ -53,9 +57,17 @@ def build_proceso_chain(
     if recblue_adapter is not None:
         cadena = cadena.enlazar(RecblueValidacionHandler(recblue_adapter))
 
-    if usar_mora_temprana and feriados_repository is not None:
+    if (
+        usar_mora_temprana
+        and feriados_repository is not None
+        and reglas_resolver is not None
+    ):
         cadena = cadena.enlazar(
-            MoraTempranaHandler(MoraTempranaService(), feriados_repository)
+            MoraTempranaHandler(
+                MoraTempranaService(),
+                feriados_repository,
+                reglas_resolver,
+            )
         )
         if asignacion_service is not None:
             cadena = cadena.enlazar(AsignacionHandler(asignacion_service))

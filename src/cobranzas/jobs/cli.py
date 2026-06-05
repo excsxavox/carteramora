@@ -17,6 +17,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     sub.add_parser("sync", help="Job 0: Excel a tabla asesores")
     sub.add_parser("sync-feriados", help="Job 0b: Excel a catálogo de feriados")
+    sub.add_parser(
+        "sync-reglas",
+        help="Sembrar tabla reglas (HU) desde .env si está vacía",
+    )
     sub.add_parser("limpieza", help="Job 1: core .lis a destino .lis limpios")
     sub.add_parser("staging", help="Job 2: .lis limpios a tablas tmp_*")
     sub.add_parser("init-db", help="Crear tablas en DATABASE_URL")
@@ -49,6 +53,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return run()
     if comando == "sync-feriados":
         from cobranzas.jobs.sync_feriados_runner import main as run
+
+        return run()
+    if comando == "sync-reglas":
+        from cobranzas.jobs.sync_reglas_runner import main as run
 
         return run()
     if comando == "limpieza":

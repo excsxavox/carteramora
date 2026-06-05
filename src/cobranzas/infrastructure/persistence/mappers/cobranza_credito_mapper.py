@@ -5,6 +5,9 @@ from cobranzas.domain.models.credito import Credito, EstadoMora
 
 CLAVE_CLASIFICACION_MORA = "CLASIFICACION_MORA"
 PREFIJO_CEDULA_ASESOR = "OF-"
+ESTADO_ASESOR_MORA_TEMPRANA = "MORA_TEMPRANA"
+ESTADO_ASESOR_MORA_MADURA = "MORA_MADURA"
+CATALOGO_MORA_TEMPRANA = "mora_temprana"
 
 
 def valor_tab(credito: Credito, clave: str) -> str:
@@ -59,6 +62,44 @@ def _decimal_tab(credito: Credito, *claves: str) -> Decimal:
 
 def clasificacion_mora_valor(credito: Credito, dias_mora_minimo: int) -> str:
     return credito.clasificar_mora(dias_mora_minimo).value
+
+
+def clasificacion_para_asignacion(
+    credito: Credito,
+    dias_mora_minimo: int,
+    usar_mora_temprana: bool = False,
+    mora_temprana_dias_min: int = 1,
+    mora_temprana_dias_max: int = 29,
+) -> Tuple[str, str, str]:
+    """
+    Clasificación de cobranza para asesores_deuda.
+
+    Retorna (valor_catalogo, descripcion_catalogo, estado_asesores_deuda).
+    El estado operativo del crédito (VIGENTE, CASTIGADO…) queda en deuda.estado.
+    """
+    if (
+        usar_mora_temprana
+        and mora_temprana_dias_min <= credito.dias_mora <= mora_temprana_dias_max
+    ):
+        return (
+            CATALOGO_MORA_TEMPRANA,
+            "Mora temprana",
+            ESTADO_ASESOR_MORA_TEMPRANA,
+        )
+
+    estado = credito.clasificar_mora(dias_mora_minimo)
+    if estado == EstadoMora.MORA_GRAVE:
+        estado_asesor = EstadoMora.MORA_GRAVE.value.upper()
+    elif estado == EstadoMora.MORA_LEVE:
+        estado_asesor = ESTADO_ASESOR_MORA_MADURA
+    else:
+        estado_asesor = EstadoMora.AL_DIA.value.upper()
+
+    return (
+        clasificacion_mora_valor(credito, dias_mora_minimo),
+        catalogo_descripcion_clasificacion(estado),
+        estado_asesor,
+    )
 
 
 def estado_operacion_valor(credito: Credito) -> str:

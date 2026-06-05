@@ -15,6 +15,9 @@ from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
 from cobranzas.domain.services.persistir_cartera_mora_service import (
     PersistirCarteraMoraService,
 )
+from cobranzas.domain.services.resolver_reglas_mora_service import (
+    ResolverReglasMoraService,
+)
 from cobranzas.domain.services.tab_detalle_export_service import (
     TabDetalleExportService,
 )
@@ -92,6 +95,7 @@ class ProcesarCobranzasUseCase:
         tipos_oper_excluidos: tuple[str, ...] = (),
         archivo_asignacion: Path = Path("destino/ASIGNACION.csv"),
         feriados_repository: Optional[FeriadosCalendarioPort] = None,
+        reglas_resolver: Optional[ResolverReglasMoraService] = None,
         asignacion_service: Optional[AsignacionCarteraService] = None,
         recblue_adapter: Optional[RecblueArchivoAdapter] = None,
         archivo_recblue: Optional[Path] = None,
@@ -105,6 +109,7 @@ class ProcesarCobranzasUseCase:
             persistir_service=persistir_service,
             usar_mora_temprana=usar_mora_temprana,
             feriados_repository=feriados_repository,
+            reglas_resolver=reglas_resolver,
             asignacion_service=asignacion_service,
             recblue_adapter=recblue_adapter,
         )

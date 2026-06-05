@@ -27,8 +27,15 @@ from cobranzas.infrastructure.persistence.repositories import SqlAlchemyCobranza
 from cobranzas.infrastructure.persistence.repositories.asignacion_mensual_repository import (
     SqlAlchemyAsignacionMensualRepository,
 )
+from cobranzas.domain.services.resolver_reglas_mora_service import (
+    ResolverReglasMoraService,
+)
+from cobranzas.domain.services.sembrar_reglas_mora_service import SembrarReglasMoraService
 from cobranzas.infrastructure.persistence.repositories.feriados_calendario_repository import (
     SqlAlchemyFeriadosCalendarioRepository,
+)
+from cobranzas.infrastructure.persistence.repositories.reglas_repository import (
+    SqlAlchemyReglasRepository,
 )
 from cobranzas.infrastructure.persistence.session import get_session_factory
 
@@ -43,6 +50,7 @@ def build_procesar_cobranzas_use_case(
     cfg = settings or Settings()
     persistir_service: Optional[PersistirCarteraMoraService] = None
     feriados_repo = None
+    reglas_resolver = None
     asignacion_service = None
     recblue_adapter = None
     session_factory = None
@@ -61,11 +69,24 @@ def build_procesar_cobranzas_use_case(
                 session_factory,
                 cfg.dias_mora_minimo,
                 recblue=recblue_adapter,
+                usar_mora_temprana=cfg.usar_mora_temprana,
+                mora_temprana_dias_min=cfg.mora_temprana_dias_min,
+                mora_temprana_dias_max=cfg.mora_temprana_dias_max,
             ),
             dias_mora_minimo=cfg.dias_mora_minimo,
         )
 
     if cfg.usar_mora_temprana and session_factory is not None:
+        reglas_repo = SqlAlchemyReglasRepository(session_factory)
+        SembrarReglasMoraService(reglas_repo).sembrar_si_vacio(
+            estados_excluidos=_lista_csv(cfg.estados_excluidos),
+            tipos_oper_excluidos=_lista_csv(cfg.tipos_oper_excluidos),
+            dias_min=cfg.mora_temprana_dias_min,
+            dias_max=cfg.mora_temprana_dias_max,
+        )
+        reglas_resolver = ResolverReglasMoraService(
+            reglas_repo, usar_reglas_bd=cfg.usar_reglas_bd
+        )
         feriados_repo = SqlAlchemyFeriadosCalendarioRepository(
             session_factory, cfg.clave_feriados
         )
@@ -100,6 +121,7 @@ def build_procesar_cobranzas_use_case(
         tipos_oper_excluidos=_lista_csv(cfg.tipos_oper_excluidos),
         archivo_asignacion=cfg.archivo_salida_asignacion,
         feriados_repository=feriados_repo,
+        reglas_resolver=reglas_resolver,
         asignacion_service=asignacion_service,
         recblue_adapter=recblue_adapter,
         archivo_recblue=cfg.archivo_recblue,
