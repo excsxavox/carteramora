@@ -5,6 +5,9 @@ from sqlalchemy import extract, select
 from sqlalchemy.orm import sessionmaker
 
 from cobranzas.domain.ports.asignacion_mensual_port import AsignacionMensualPort
+from cobranzas.infrastructure.persistence.mappers.cobranza_credito_mapper import (
+    codigo_usuario_desde_cedula_asesor,
+)
 from cobranzas.infrastructure.persistence.models import Asesor, AsesorDeuda, Deuda
 
 
@@ -33,6 +36,6 @@ class SqlAlchemyAsignacionMensualRepository(AsignacionMensualPort):
         for numero_op, cedula, nombre in filas:
             if not numero_op:
                 continue
-            codigo = (cedula or "").replace("OF-", "").strip()
-            resultado[str(numero_op)] = (codigo, (nombre or "").strip())
+            codigo = codigo_usuario_desde_cedula_asesor(cedula or "")
+            resultado[str(numero_op)] = (codigo, (nombre or codigo).strip())
         return resultado

@@ -3,11 +3,12 @@
 import logging
 from dataclasses import replace
 from datetime import date
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from cobranzas.domain.models.asignacion_credito import AsignacionCredito
 from cobranzas.domain.models.credito import Credito
 from cobranzas.domain.ports.asignacion_mensual_port import AsignacionMensualPort
+from cobranzas.domain.ports.asesores_rotacion_port import AsesoresRotacionPort
 from cobranzas.domain.ports.recblue_port import RecbluePort
 from cobranzas.domain.services.mora_temprana_service import saldo_capital_desde_credito
 
@@ -17,22 +18,35 @@ logger = logging.getLogger("cobranzas.asignacion")
 class AsignacionCarteraService:
     def __init__(
         self,
-        rotacion_asesores: Sequence[str],
+        asesores_rotacion: AsesoresRotacionPort,
         asignacion_mensual: Optional[AsignacionMensualPort] = None,
         recblue: Optional[RecbluePort] = None,
     ) -> None:
-        self._rotacion = [c.strip().upper() for c in rotacion_asesores if c.strip()]
+        self._asesores_rotacion = asesores_rotacion
         self._asignacion_mensual = asignacion_mensual
         self._recblue = recblue
+
+    def _cargar_rotacion(self) -> List[Tuple[str, str]]:
+        activos = self._asesores_rotacion.listar_activos()
+        if activos:
+            logger.info(
+                "Rotación asesores desde BD | activos=%s | %s",
+                len(activos),
+                ", ".join(c for c, _ in activos[:8]),
+            )
+            return activos
+
+        raise ValueError(
+            "No hay asesores activos en tabla asesores. "
+            "Cargue data/catalogo/asesores.xlsx (Job 0) antes de asignar."
+        )
 
     def asignar(
         self,
         creditos: List[Credito],
         fecha_corte: date,
     ) -> Tuple[List[Credito], List[AsignacionCredito]]:
-        if not self._rotacion:
-            raise ValueError("La rotación de asesores está vacía (ASESORES_ROTACION)")
-
+        rotacion = self._cargar_rotacion()
         existentes = self._cargar_asignaciones_mes(fecha_corte)
         ids_recblue = self._recblue.id_credito_por_operacion() if self._recblue else {}
 
@@ -48,8 +62,7 @@ class AsignacionCarteraService:
                 codigo, nombre = existentes[numero]
                 reasignado = False
             else:
-                codigo = self._rotacion[indice_rotacion % len(self._rotacion)]
-                nombre = codigo
+                codigo, nombre = rotacion[indice_rotacion % len(rotacion)]
                 indice_rotacion += 1
                 existentes[numero] = (codigo, nombre)
                 reasignado = True
@@ -84,7 +97,7 @@ class AsignacionCarteraService:
         logger.info(
             "Asignación | operaciones=%s asesores_rotacion=%s nuevas=%s",
             len(filas),
-            len(self._rotacion),
+            len(rotacion),
             sum(1 for f in filas if f.reasignado),
         )
         return creditos_asignados, filas

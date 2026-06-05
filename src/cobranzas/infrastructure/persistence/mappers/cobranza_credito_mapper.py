@@ -34,6 +34,14 @@ def cedula_asesor(codigo: str) -> str:
     return f"{PREFIJO_CEDULA_ASESOR}{codigo}"
 
 
+def codigo_usuario_desde_cedula_asesor(cedula: str) -> str:
+    """OF-520 → 520; AMOLINA → AMOLINA (usuario Recblue / asignación)."""
+    texto = (cedula or "").strip().upper()
+    if texto.startswith(PREFIJO_CEDULA_ASESOR):
+        return texto[len(PREFIJO_CEDULA_ASESOR) :].strip()
+    return texto
+
+
 def montos_desde_credito(credito: Credito) -> Tuple[Decimal, Decimal, Decimal]:
     total_op = (
         Decimal(str(credito.total_operacion))

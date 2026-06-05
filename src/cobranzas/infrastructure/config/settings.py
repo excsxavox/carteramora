@@ -109,12 +109,6 @@ class Settings(BaseSettings):
         default="COMPRA CARTERA,COMPRACARTERA",
         alias="TIPOS_OPER_EXCLUIDOS",
     )
-    asesores_rotacion: str = Field(
-        default=(
-            "AMOLINA,DARODRIGUEZ,KCANCHIG,GLOPEZ,FLLERENA,LMANOSALVAS,EGUERRA,MARCOS"
-        ),
-        alias="ASESORES_ROTACION",
-    )
     archivo_salida_asignacion: Optional[Path] = Field(
         default=None,
         alias="ARCHIVO_SALIDA_ASIGNACION",

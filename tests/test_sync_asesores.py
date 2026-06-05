@@ -29,6 +29,7 @@ def _crear_excel(path: Path, filas: list) -> None:
 def test_normalizar_cedula_oficial():
     assert normalizar_cedula_asesor("087") == "OF-87"
     assert normalizar_cedula_asesor("OF-135") == "OF-135"
+    assert normalizar_cedula_asesor("LMANOSALVAS") == "OF-LMANOSALVAS"
 
 
 def test_leer_excel_asesores(tmp_path: Path):

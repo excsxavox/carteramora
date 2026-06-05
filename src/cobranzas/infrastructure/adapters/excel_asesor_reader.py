@@ -74,9 +74,9 @@ def normalizar_cedula_asesor(valor: str) -> str:
     if texto.startswith(PREFIJO_CEDULA_ASESOR):
         return texto
     solo_digitos = re.sub(r"\D", "", texto)
-    if solo_digitos:
+    if solo_digitos and solo_digitos == re.sub(r"\D", "", texto):
         return f"{PREFIJO_CEDULA_ASESOR}{solo_digitos.lstrip('0') or solo_digitos}"
-    return texto
+    return f"{PREFIJO_CEDULA_ASESOR}{texto}"
 
 
 def _parse_activo(valor: str) -> bool:

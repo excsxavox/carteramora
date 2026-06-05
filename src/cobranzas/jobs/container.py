@@ -27,6 +27,9 @@ from cobranzas.infrastructure.persistence.repositories import SqlAlchemyCobranza
 from cobranzas.infrastructure.persistence.repositories.asignacion_mensual_repository import (
     SqlAlchemyAsignacionMensualRepository,
 )
+from cobranzas.infrastructure.persistence.repositories.asesores_rotacion_repository import (
+    SqlAlchemyAsesoresRotacionRepository,
+)
 from cobranzas.domain.services.resolver_reglas_mora_service import (
     ResolverReglasMoraService,
 )
@@ -96,7 +99,7 @@ def build_procesar_cobranzas_use_case(
             else None
         )
         asignacion_service = AsignacionCarteraService(
-            rotacion_asesores=_lista_csv(cfg.asesores_rotacion),
+            asesores_rotacion=SqlAlchemyAsesoresRotacionRepository(session_factory),
             asignacion_mensual=asignacion_mensual,
             recblue=recblue_adapter,
         )
