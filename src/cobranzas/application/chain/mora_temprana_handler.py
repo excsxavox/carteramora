@@ -7,6 +7,7 @@ from cobranzas.domain.services.mora_temprana_service import MoraTempranaService
 from cobranzas.domain.services.resolver_reglas_mora_service import (
     ResolverReglasMoraService,
 )
+from cobranzas.infrastructure.config.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,16 @@ class MoraTempranaHandler(Handler):
             estados_excluidos=contexto.estados_excluidos,
             tipos_oper_excluidos=contexto.tipos_oper_excluidos,
         )
+        cfg = Settings()
+        logger.info(
+            "Mora | reglas | origen=%s | dias=%s-%s | estados_excl=%s | tipos_excl=%s | feriados=%s",
+            config.origen,
+            config.dias_min,
+            config.dias_max,
+            list(config.estados_excluidos),
+            list(config.tipos_oper_excluidos),
+            len(feriados),
+        )
         creditos, metricas = self._service.procesar(
             contexto.creditos,
             feriados=feriados,
@@ -44,6 +55,7 @@ class MoraTempranaHandler(Handler):
             estados_excluidos=config.estados_excluidos,
             tipos_oper_excluidos=config.tipos_oper_excluidos,
             usar_calculo_dia_pago=True,
+            log_muestra=cfg.log_mora_muestra,
         )
         metricas["reglas_origen"] = config.origen
         contexto.creditos = creditos

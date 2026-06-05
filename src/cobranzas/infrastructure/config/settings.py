@@ -123,6 +123,14 @@ class Settings(BaseSettings):
         alias="LOG_MUESTRA_MAPEO",
         description="Filas de ejemplo en logs .lis (0=desactivado)",
     )
+    log_mora_muestra: int = Field(
+        default=10,
+        alias="LOG_MORA_MUESTRA",
+        description=(
+            "Operaciones de ejemplo en consola por motivo mora "
+            "(-1=todas en INFO, 0=solo resumen, N=primeras N por categoría)"
+        ),
+    )
     database_url: str = Field(
         default="sqlite:///data/BD_Cobranza.sqlite",
         alias="DATABASE_URL",
