@@ -36,6 +36,10 @@ def _parser() -> argparse.ArgumentParser:
         "migrar-bd",
         help="Añadir columnas nuevas deudor/deuda en SQLite existente",
     )
+    sub.add_parser(
+        "api",
+        help="Servidor HTTP: POST /pipeline con body {\"fecha\": \"DDMMYYYY\"}",
+    )
     return parser
 
 
@@ -81,6 +85,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return run()
     if comando == "migrar-bd":
         from cobranzas.jobs.migrar_sqlite_schema import main as run
+
+        return run()
+    if comando == "api":
+        from cobranzas.jobs.api_runner import main as run
 
         return run()
 

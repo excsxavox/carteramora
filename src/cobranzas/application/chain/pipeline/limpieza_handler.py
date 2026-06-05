@@ -41,4 +41,5 @@ class LimpiezaPipelineHandler(PipelineHandler):
                 result.archivo_asignacion,
             )
         logger.info("Salidas: %s | %s", result.archivo_detalle_morosidad, result.archivo_detalle_mora)
+        contexto.resultado_limpieza = result
         return contexto

@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
+from typing import Optional
 
+from cobranzas.application.use_cases.procesar_cobranzas import ProcesarCobranzasResult
 from cobranzas.infrastructure.config.settings import Settings
 
 
@@ -11,3 +13,4 @@ class PipelineContext:
     codigo_salida: int = 0
     detener: bool = False
     mensajes: list[str] = field(default_factory=list)
+    resultado_limpieza: Optional[ProcesarCobranzasResult] = None

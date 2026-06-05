@@ -1,8 +1,13 @@
 from pathlib import Path
 from typing import Optional
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from cobranzas.infrastructure.config.docsmora_resolver import (
+    parsear_fecha_corte,
+    resolver_rutas_cartera,
+)
 
 
 class Settings(BaseSettings):
@@ -50,26 +55,43 @@ class Settings(BaseSettings):
         alias="DB_TRUST_SERVER_CERTIFICATE",
     )
     db_encrypt: Optional[str] = Field(default="yes", alias="DB_ENCRYPT")
-    archivo_morosidad: Path = Field(
-        default=Path(
-            "docsmora/2026/05042026/cartera05042026b/camorosico_06032026_0047_of_0.lis"
-        ),
+    db_trusted_connection: Optional[str] = Field(
+        default=None,
+        alias="DB_TRUSTED_CONNECTION",
+        description="yes = autenticación integrada de Windows (ignora DB_USER/DB_PASSWORD)",
+    )
+    directorio_docsmora: Path = Field(
+        default=Path("docsmora"),
+        validation_alias=AliasChoices("DOCSMORA_DIR", "DIRECTORIO_DOCSMORA"),
+    )
+    directorio_destino: Path = Field(
+        default=Path("destino"),
+        validation_alias=AliasChoices("DESTINO_DIR", "DIRECTORIO_DESTINO"),
+    )
+    fecha_corte: Optional[str] = Field(
+        default=None,
+        alias="FECHA_CORTE",
+        description="DDMMYYYY; vacío = fecha de hoy",
+    )
+    usar_rutas_automaticas: bool = Field(
+        default=True,
+        alias="USAR_RUTAS_AUTOMATICAS",
+        description="Busca .lis en docsmora/{año}/{hoy}/cartera{hoy}b",
+    )
+    archivo_morosidad: Optional[Path] = Field(
+        default=None,
         alias="ARCHIVO_MOROSIDAD",
     )
-    archivo_cartera: Path = Field(
-        default=Path(
-            "docsmora/2026/05042026/cartera05042026b/cadetacaco_cie06032026_0233_of_0.lis"
-        ),
+    archivo_cartera: Optional[Path] = Field(
+        default=None,
         alias="ARCHIVO_CARTERA",
     )
-    archivo_salida_morosidad: Path = Field(
-        default=Path(
-            "destino/2026/05042026/cartera05042026b/detalle_morosidad.lis"
-        ),
+    archivo_salida_morosidad: Optional[Path] = Field(
+        default=None,
         alias="ARCHIVO_SALIDA_MOROSIDAD",
     )
-    archivo_salida_mora: Path = Field(
-        default=Path("destino/2026/05042026/cartera05042026b/reporte_mora.lis"),
+    archivo_salida_mora: Optional[Path] = Field(
+        default=None,
         alias="ARCHIVO_SALIDA_MORA",
     )
     dias_mora_minimo: int = Field(default=30, alias="DIAS_MORA_MINIMO")
@@ -95,8 +117,8 @@ class Settings(BaseSettings):
         ),
         alias="ASESORES_ROTACION",
     )
-    archivo_salida_asignacion: Path = Field(
-        default=Path("destino/2026/05042026/cartera05042026b/ASIGNACION.csv"),
+    archivo_salida_asignacion: Optional[Path] = Field(
+        default=None,
         alias="ARCHIVO_SALIDA_ASIGNACION",
     )
     archivo_recblue: Optional[Path] = Field(
@@ -120,3 +142,47 @@ class Settings(BaseSettings):
         alias="INCLUIR_STAGING_EN_PIPELINE",
         description="Si true, python main.py también ejecuta Job 2 (tmp_*)",
     )
+    api_host: str = Field(default="127.0.0.1", alias="API_HOST")
+    api_port: int = Field(default=8000, alias="API_PORT")
+
+    @model_validator(mode="after")
+    def _aplicar_rutas_automaticas(self) -> "Settings":
+        if not self.usar_rutas_automaticas:
+            self._validar_rutas_manuales()
+            return self
+
+        fecha = parsear_fecha_corte(self.fecha_corte) if self.fecha_corte else None
+        rutas = resolver_rutas_cartera(
+            self.directorio_docsmora,
+            self.directorio_destino,
+            fecha=fecha,
+        )
+
+        if self.archivo_morosidad is None:
+            self.archivo_morosidad = rutas.archivo_morosidad
+        if self.archivo_cartera is None:
+            self.archivo_cartera = rutas.archivo_cartera
+        if self.archivo_salida_morosidad is None:
+            self.archivo_salida_morosidad = rutas.archivo_salida_morosidad
+        if self.archivo_salida_mora is None:
+            self.archivo_salida_mora = rutas.archivo_salida_mora
+        if self.archivo_salida_asignacion is None:
+            self.archivo_salida_asignacion = rutas.archivo_salida_asignacion
+        return self
+
+    def _validar_rutas_manuales(self) -> None:
+        faltantes = [
+            nombre
+            for nombre, valor in (
+                ("ARCHIVO_MOROSIDAD", self.archivo_morosidad),
+                ("ARCHIVO_CARTERA", self.archivo_cartera),
+                ("ARCHIVO_SALIDA_MOROSIDAD", self.archivo_salida_morosidad),
+                ("ARCHIVO_SALIDA_MORA", self.archivo_salida_mora),
+                ("ARCHIVO_SALIDA_ASIGNACION", self.archivo_salida_asignacion),
+            )
+            if valor is None
+        ]
+        if faltantes:
+            raise ValueError(
+                "USAR_RUTAS_AUTOMATICAS=false requiere: " + ", ".join(faltantes)
+            )

@@ -11,8 +11,6 @@ def construir_url_sql_server(settings: Settings) -> str:
         raise ValueError("DB_SERVER y DB_DATABASE son obligatorios para SQL Server")
 
     driver = quote_plus(settings.db_driver or "ODBC Driver 18 for SQL Server")
-    usuario = quote_plus(settings.db_user or "")
-    password = quote_plus(settings.db_password or "")
     servidor = settings.db_server.strip()
 
     parametros = [f"driver={driver}"]
@@ -23,6 +21,18 @@ def construir_url_sql_server(settings: Settings) -> str:
             f"TrustServerCertificate={settings.db_trust_server_certificate}"
         )
 
+    usa_windows = (settings.db_trusted_connection or "").strip().lower() in (
+        "yes",
+        "true",
+        "1",
+    )
+    if usa_windows:
+        parametros.append("trusted_connection=yes")
+        query = "&".join(parametros)
+        return f"mssql+pyodbc://@{servidor}/{settings.db_database}?{query}"
+
+    usuario = quote_plus(settings.db_user or "")
+    password = quote_plus(settings.db_password or "")
     query = "&".join(parametros)
     return f"mssql+pyodbc://{usuario}:{password}@{servidor}/{settings.db_database}?{query}"
 

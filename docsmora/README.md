@@ -11,15 +11,27 @@ docsmora/
             └── cadetacaco_cie06032026_0233_of_0.lis   (reporte detallado cartera)
 ```
 
-## Ejecutar con esta carpeta
+## Ejecutar (rutas automáticas)
 
-En `.env`:
+En `.env` solo necesitas:
 
 ```env
-ARCHIVO_MOROSIDAD=docsmora/2026/05042026/cartera05042026b/camorosico_06032026_0047_of_0.lis
-ARCHIVO_CARTERA=docsmora/2026/05042026/cartera05042026b/cadetacaco_cie06032026_0233_of_0.lis
-ARCHIVO_SALIDA=destino/2026/05042026/cartera05042026b/reporte_mora.json
+DOCSMORA_DIR=docsmora
+DESTINO_DIR=destino
+USAR_RUTAS_AUTOMATICAS=true
 ```
+
+El job busca **la fecha de hoy** (`DDMMYYYY`, ej. `05062026`):
+
+```
+docsmora/2026/05062026/cartera05062026b/
+  camorosico_05062026_....lis
+  cadetacaco_cie05062026_....lis
+```
+
+Salidas en `destino/2026/05062026/cartera05062026b/`.
+
+Para otra fecha: `FECHA_CORTE=05042026`
 
 ```bash
 python main.py

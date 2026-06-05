@@ -2,10 +2,11 @@ from unittest.mock import MagicMock, patch
 
 from cobranzas.application.chain.pipeline import PipelineContext, build_pipeline_chain
 from cobranzas.infrastructure.config.settings import Settings
+from tests.conftest import RUTAS_MANUALES_FIXTURE
 
 
 def test_pipeline_detiene_si_fallan_asesores():
-    settings = Settings()
+    settings = Settings(**RUTAS_MANUALES_FIXTURE)
     contexto = PipelineContext(settings=settings)
 
     with patch(
@@ -19,7 +20,7 @@ def test_pipeline_detiene_si_fallan_asesores():
 
 
 def test_pipeline_ejecuta_feriados_despues_de_asesores():
-    settings = Settings()
+    settings = Settings(**RUTAS_MANUALES_FIXTURE)
     contexto = PipelineContext(settings=settings)
     orden: list[str] = []
 

@@ -2,9 +2,13 @@
 
 import logging
 import sys
+from typing import Optional
 
 from cobranzas.application.chain.pipeline import PipelineContext, build_pipeline_chain
+from cobranzas.domain.models.pipeline_run_result import PipelineRunResult
 from cobranzas.infrastructure.config.database_url import resolver_database_url
+from cobranzas.infrastructure.config.docsmora_resolver import fecha_corte_ddmmyyyy
+from cobranzas.infrastructure.config.fecha_corte import normalizar_fecha_corte
 from cobranzas.infrastructure.config.settings import Settings
 from cobranzas.infrastructure.persistence.database import (
     create_engine_from_settings,
@@ -14,6 +18,14 @@ from cobranzas.infrastructure.persistence.database import (
 from cobranzas.jobs.runner import _configure_logging
 
 logger = logging.getLogger("cobranzas.pipeline")
+
+
+def build_settings(fecha_corte: Optional[str] = None) -> Settings:
+    """Settings desde .env; si hay fecha, resuelve rutas docsmora para ese día."""
+    overrides: dict = {"USAR_RUTAS_AUTOMATICAS": True}
+    if fecha_corte:
+        overrides["FECHA_CORTE"] = normalizar_fecha_corte(fecha_corte)
+    return Settings(**overrides)
 
 
 def _preparar_base_datos(settings: Settings) -> None:
@@ -30,6 +42,15 @@ def _preparar_base_datos(settings: Settings) -> None:
 
 def _log_plan(settings: Settings) -> None:
     logger.info("=== Plan pipeline (python main.py) ===")
+    if settings.usar_rutas_automaticas:
+        logger.info(
+            "Rutas automáticas | docsmora=%s | fecha=%s | lote=%s",
+            settings.directorio_docsmora,
+            settings.fecha_corte or "hoy",
+            settings.archivo_morosidad.parent if settings.archivo_morosidad else "?",
+        )
+        logger.info("  CAMOROSICO → %s", settings.archivo_morosidad)
+        logger.info("  CADETACACO → %s", settings.archivo_cartera)
     logger.info("1. Job 0  — Excel asesores → %s", settings.archivo_excel_asesores)
     logger.info(
         "2. Job 0b — Excel feriados → %s / %s (clave %s)",
@@ -48,25 +69,61 @@ def _log_plan(settings: Settings) -> None:
         logger.info("4. Job 2  — Staging tmp_* desde .lis limpios")
 
 
+def _resultado_desde_contexto(
+    settings: Settings, contexto: PipelineContext
+) -> PipelineRunResult:
+    ftxt = settings.fecha_corte or fecha_corte_ddmmyyyy()
+    limpieza = contexto.resultado_limpieza
+    return PipelineRunResult(
+        ok=contexto.codigo_salida == 0,
+        codigo_salida=contexto.codigo_salida,
+        fecha_corte=ftxt,
+        archivo_morosidad=str(settings.archivo_morosidad),
+        archivo_cartera=str(settings.archivo_cartera),
+        archivo_salida_morosidad=str(settings.archivo_salida_morosidad),
+        archivo_salida_mora=str(settings.archivo_salida_mora),
+        archivo_asignacion=str(settings.archivo_salida_asignacion),
+        total_en_mora=limpieza.total_en_mora if limpieza else None,
+        total_saldo_mora=limpieza.total_saldo_mora if limpieza else None,
+        registros_persistidos_bd=limpieza.registros_persistidos_bd if limpieza else None,
+        asignaciones_generadas=limpieza.asignaciones_generadas if limpieza else None,
+        mensajes=list(contexto.mensajes),
+    )
+
+
+def ejecutar_pipeline(
+    fecha_corte: Optional[str] = None,
+    settings: Optional[Settings] = None,
+    configurar_logs: bool = True,
+) -> PipelineRunResult:
+    """
+    Ejecuta Jobs 0 + 0b + 1.
+
+    :param fecha_corte: DDMMYYYY o YYYY-MM-DD; None = hoy (.env)
+    """
+    cfg = settings or build_settings(fecha_corte)
+    if configurar_logs:
+        _configure_logging(cfg.log_level)
+
+    _log_plan(cfg)
+    _preparar_base_datos(cfg)
+
+    contexto = PipelineContext(settings=cfg)
+    contexto = build_pipeline_chain().manejar(contexto)
+
+    if contexto.codigo_salida == 0:
+        logger.info("=== Pipeline finalizado correctamente ===")
+    else:
+        logger.error("=== Pipeline detenido (código %s) ===", contexto.codigo_salida)
+        for msg in contexto.mensajes:
+            logger.error("  %s", msg)
+
+    return _resultado_desde_contexto(cfg, contexto)
+
+
 def main() -> int:
-    settings = Settings()
-    _configure_logging(settings.log_level)
-
     try:
-        _log_plan(settings)
-        _preparar_base_datos(settings)
-
-        contexto = PipelineContext(settings=settings)
-        contexto = build_pipeline_chain().manejar(contexto)
-
-        if contexto.codigo_salida == 0:
-            logger.info("=== Pipeline finalizado correctamente ===")
-        else:
-            logger.error("=== Pipeline detenido (código %s) ===", contexto.codigo_salida)
-            for msg in contexto.mensajes:
-                logger.error("  %s", msg)
-
-        return contexto.codigo_salida
+        return ejecutar_pipeline().codigo_salida
     except Exception:
         logger.exception("Error fatal en pipeline")
         return 1
