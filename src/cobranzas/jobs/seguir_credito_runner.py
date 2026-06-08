@@ -15,6 +15,8 @@ from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
 from cobranzas.domain.services.dias_habiles_service import calcular_cuota_mora
 from cobranzas.domain.services.mora_temprana_service import (
     MoraTempranaService,
+    _cuota_mes_anterior_impaga,
+    _mora_madura_acumulada_camorosico,
     debe_excluir_operacion,
     dia_pago_desde_credito,
     dias_atraso_camorosico,
@@ -212,37 +214,56 @@ def ejecutar_seguimiento(
         print("  No entra a mora temprana ni ASIGNACION.csv")
         return 0
 
-    ref_camorosico = dias_atraso_camorosico(credito)
+    dias_atraso = dias_atraso_camorosico(credito)
     dia_pago = dia_pago_desde_credito(credito)
-    print("\n[Mora] Reglas")
-    print(f"  ref CAMOROSICO (S)         : {ref_camorosico}  (solo referencia)")
+    ultimo_pago = fecha_ultimo_pago_desde_credito(credito)
+    print("\n[Mora] Reglas (HU-GRC-01)")
+    print(f"  DIAS ATRASO (CAMOROSICO)   : {dias_atraso}")
     print(
         f"  rango temprana             : {reglas.dias_min}-{reglas.dias_max} "
-        "dias habiles (DIA PAGO + feriados)"
+        "días hábiles (DIA PAGO + feriados)"
     )
-    ultimo_pago = fecha_ultimo_pago_desde_credito(credito)
-    if dia_pago > 0:
+    if dias_atraso <= 0:
+        print("\n  -> AL DIA (sin mora en CAMOROSICO).")
+    elif dia_pago <= 0:
+        print("  dia_pago (CADETACACO)      : sin dato")
+        print("\n  -> NO elegible (se requiere DIA PAGO).")
+    else:
         cuota = calcular_cuota_mora(
-            credito.fecha_corte, dia_pago, feriados, ultimo_pago=ultimo_pago
+            credito.fecha_corte, dia_pago, feriados, ultimo_pago=None
         )
         mes_cuota = f"{cuota.anio_cuota:04d}-{cuota.mes_cuota:02d}"
-        print(f"  dia_pago (AG)              : {dia_pago}")
-        print(f"  ultimo_pago al corte       : {ultimo_pago or 'sin dato <= corte'}")
-        print(f"  dias calculados            : {cuota.dias}")
+        mes_corte = (
+            f"{credito.fecha_corte.year:04d}-{credito.fecha_corte.month:02d}"
+        )
+        print(f"  dia_pago (CADETACACO)      : {dia_pago}")
+        print(f"  dias habiles calculados    : {cuota.dias}")
         print(f"  vencimiento_efectivo       : {cuota.vencimiento_efectivo}")
         print(f"  mes_cuota                  : {mes_cuota}")
-        print(f"  mes_corte                  : {credito.fecha_corte.year:04d}-{credito.fecha_corte.month:02d}")
+        print(f"  mes_corte                  : {mes_corte}")
+        if ultimo_pago:
+            print(f"  ultimo_pago (CADETACACO)   : {ultimo_pago}")
         if cuota.clasificacion == "al_dia":
-            print("\n  -> AL DIA (cuota pagada o sin vencimiento impago al corte).")
+            print("\n  -> AL DIA (cuota del período sin vencimiento impago).")
+        elif mes_cuota != mes_corte:
+            print("\n  -> MORA MADURA (cuota no es del período actual).")
+        elif _cuota_mes_anterior_impaga(
+            credito.fecha_corte, dia_pago, feriados, ultimo_pago
+        ):
+            print("\n  -> MORA MADURA (períodos anteriores impagos).")
+        elif _mora_madura_acumulada_camorosico(
+            dias_atraso, cuota.dias, reglas.dias_max
+        ):
+            print(
+                f"\n  -> MORA MADURA (CAMOROSICO {dias_atraso} acumulado, "
+                f"días hábiles={cuota.dias})."
+            )
         elif cuota.dias < reglas.dias_min:
-            print("\n  -> FUERA DE RANGO (dias por debajo del minimo).")
+            print("\n  -> FUERA DE RANGO (días hábiles por debajo del mínimo).")
         elif cuota.dias > reglas.dias_max:
-            print("\n  -> FUERA DE RANGO (dias por encima del maximo).")
+            print("\n  -> FUERA DE RANGO (días hábiles por encima del máximo).")
         else:
-            print("\n  -> ELEGIBLE mora temprana (iria a asignacion)")
-    else:
-        print("  dia_pago (AG)              : sin dato")
-        print("\n  -> NO elegible (se requiere DIA PAGO para calcular dias)")
+            print("\n  -> ELEGIBLE mora temprana (iría a asignación)")
 
     # --- Simulación pipeline ---
     servicio = MoraTempranaService()

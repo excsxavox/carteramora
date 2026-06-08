@@ -85,49 +85,81 @@ def _candidatos_lis(carpeta_lote: Path, patron: str) -> list[Path]:
     ]
 
 
+# Nombres oficiales del core (HU): camorosico_{MMDDYYYY}_{HHMM}_of_0.lis
+PATRONES_CAMOROSICO = (
+    "camorosico_{fecha}_*_of_0.lis",
+    "camorosico_{fecha}*.lis",
+)
+
+# cadetacaco_cie{MMDDYYYY}_{HHMM}_of_0.lis
+PATRONES_CADETACACO = (
+    "cadetacaco_cie{fecha}_*_of_0.lis",
+    "cadetacaco_cie{fecha}*.lis",
+)
+
+# Compatibilidad con exportaciones antiguas (cobra en lugar de cie)
+PATRONES_CADETACACO_LEGACY = (
+    "cadetacaco_cobra{fecha}*_of_0.lis",
+    "cadetacaco_cobra{fecha}*.lis",
+)
+
+
+def _mensaje_carpeta_inexistente(
+    fecha_mmddyyyy: str,
+    carpeta_lote: Path,
+    directorio_docsmora: Optional[Path],
+) -> str:
+    sugerencia = ""
+    if directorio_docsmora is not None:
+        disponibles = _listar_fechas_lote_disponibles(directorio_docsmora)
+        if disponibles:
+            ultimas = ", ".join(disponibles[-5:])
+            sugerencia = (
+                f" Fechas con lote en docsmora: {ultimas}."
+                f" Defina FECHA_CORTE en .env o envíe fecha en POST /pipeline."
+            )
+    return (
+        f"No existe carpeta de lote para {fecha_mmddyyyy}: "
+        f"{carpeta_lote.as_posix()}.{sugerencia}"
+    )
+
+
 def _buscar_lis_en_lote(
     carpeta_lote: Path,
-    prefijo: str,
+    patrones: tuple[str, ...],
     fecha_mmddyyyy: str,
+    descripcion: str,
+    patrones_legacy: Optional[tuple[str, ...]] = None,
     directorio_docsmora: Optional[Path] = None,
 ) -> Path:
     if not carpeta_lote.is_dir():
-        sugerencia = ""
-        if directorio_docsmora is not None:
-            disponibles = _listar_fechas_lote_disponibles(directorio_docsmora)
-            if disponibles:
-                ultimas = ", ".join(disponibles[-5:])
-                sugerencia = (
-                    f" Fechas con lote en docsmora: {ultimas}."
-                    f" Defina FECHA_CORTE en .env o envíe fecha en POST /pipeline."
-                )
         raise FileNotFoundError(
-            f"No existe carpeta de lote para {fecha_mmddyyyy}: "
-            f"{carpeta_lote.as_posix()}.{sugerencia}"
+            _mensaje_carpeta_inexistente(
+                fecha_mmddyyyy, carpeta_lote, directorio_docsmora
+            )
         )
 
-    patrones_con_fecha = (
-        f"{prefijo}*{fecha_mmddyyyy}*.lis",
-        f"{prefijo}_*{fecha_mmddyyyy}*.lis",
-        f"{prefijo}_cie{fecha_mmddyyyy}*.lis",
-    )
-    patrones_genericos = (
-        f"{prefijo}*.lis",
-        f"{prefijo}_*.lis",
-        f"{prefijo}_cie*.lis",
-    )
-
     candidatos: list[Path] = []
-    for patron in patrones_con_fecha:
-        candidatos.extend(_candidatos_lis(carpeta_lote, patron))
+    for plantilla in patrones:
+        candidatos.extend(
+            _candidatos_lis(carpeta_lote, plantilla.format(fecha=fecha_mmddyyyy))
+        )
+
+    if not candidatos and patrones_legacy:
+        for plantilla in patrones_legacy:
+            candidatos.extend(
+                _candidatos_lis(
+                    carpeta_lote, plantilla.format(fecha=fecha_mmddyyyy)
+                )
+            )
 
     if not candidatos:
-        for patron in patrones_genericos:
-            candidatos.extend(_candidatos_lis(carpeta_lote, patron))
-
-    if not candidatos:
+        ejemplos = ", ".join(
+            p.format(fecha=fecha_mmddyyyy) for p in patrones[:2]
+        )
         raise FileNotFoundError(
-            f"No se encontró {prefijo}*.lis en {carpeta_lote.as_posix()}"
+            f"No se encontró {descripcion} en {carpeta_lote.as_posix()} "
+            f"(patrones: {ejemplos})"
         )
 
     candidatos = list({p.resolve(): p for p in candidatos}.values())
@@ -145,8 +177,9 @@ def resolver_rutas_cartera(
     Busca entradas y define salidas para la fecha indicada (hoy por defecto).
 
     Estructura:
-      docsmora/2026/05052026/cartera05052026b/camorosico_05052026_....lis
-      destino/2026/05052026/cartera05052026b/...
+      docsmora/2026/05042026/cartera05042026b/camorosico_05042026_2327_of_0.lis
+      docsmora/2026/05042026/cartera05042026b/cadetacaco_cie05042026_0148_of_0.lis
+      destino/2026/05042026/cartera05042026b/...
     """
     ftxt = fecha_mmddyyyy or fecha_corte_mmddyyyy(fecha)
     carpeta_entrada = carpeta_lote_docsmora(directorio_docsmora, ftxt)
@@ -154,10 +187,19 @@ def resolver_rutas_cartera(
     carpeta_salida.mkdir(parents=True, exist_ok=True)
 
     morosidad = _buscar_lis_en_lote(
-        carpeta_entrada, "camorosico", ftxt, directorio_docsmora
+        carpeta_entrada,
+        PATRONES_CAMOROSICO,
+        ftxt,
+        "camorosico",
+        directorio_docsmora=directorio_docsmora,
     )
     cartera = _buscar_lis_en_lote(
-        carpeta_entrada, "cadetacaco", ftxt, directorio_docsmora
+        carpeta_entrada,
+        PATRONES_CADETACACO,
+        ftxt,
+        "cadetacaco",
+        patrones_legacy=PATRONES_CADETACACO_LEGACY,
+        directorio_docsmora=directorio_docsmora,
     )
 
     return RutasCarteraDia(

@@ -1,5 +1,6 @@
 """Composition root para alertas por correo."""
 
+import logging
 from typing import Optional
 
 from cobranzas.domain.services.notificacion_errores_service import NotificacionErroresService
@@ -9,12 +10,21 @@ from cobranzas.infrastructure.adapters.excel_destinatarios_notificacion_reader i
 from cobranzas.infrastructure.adapters.smtp_correo_adapter import SmtpCorreoAdapter
 from cobranzas.infrastructure.config.settings import Settings
 
+logger = logging.getLogger("cobranzas.notificaciones")
+
 
 def build_notificacion_errores_service(
     settings: Optional[Settings] = None,
 ) -> Optional[NotificacionErroresService]:
     cfg = settings or Settings()
     if not cfg.notificaciones_errores_habilitado:
+        return None
+
+    if not (cfg.smtp_host or "").strip():
+        logger.warning(
+            "NOTIFICACIONES_ERRORES_HABILITADO=true pero SMTP_HOST no está "
+            "configurado; se omiten correos de error"
+        )
         return None
 
     correo = SmtpCorreoAdapter(

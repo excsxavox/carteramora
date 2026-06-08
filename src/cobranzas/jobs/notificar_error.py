@@ -21,7 +21,10 @@ def notificar_error_pipeline(
   """
     servicio = build_notificacion_errores_service(settings)
     if servicio is None:
-        return NotificacionResultado(omitido_motivo="notificaciones deshabilitadas")
+        motivo = "notificaciones deshabilitadas"
+        if settings.notificaciones_errores_habilitado:
+            motivo = "SMTP no configurado o notificaciones deshabilitadas"
+        return NotificacionResultado(omitido_motivo=motivo)
 
     traceback_text = ""
     if exc is not None:

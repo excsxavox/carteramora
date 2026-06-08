@@ -7,8 +7,8 @@ docsmora/
 └── 2026/
     └── 05052026/              # Fecha de corte (MMDDYYYY = mes-día-año)
         └── cartera05052026b/  # Lote de cartera
-            ├── camorosico_05052026_2341_of_0.lis
-            └── cadetacaco_cobra05052026_0148_of_0.lis
+            ├── camorosico_05052026_2327_of_0.lis
+            └── cadetacaco_cie05052026_0148_of_0.lis
 ```
 
 ## Ejecutar (rutas automáticas)
@@ -25,9 +25,11 @@ El job busca **la fecha de hoy** en formato **MMDDYYYY** (ej. `05052026` = 5 de 
 
 ```
 docsmora/2026/05052026/cartera05052026b/
-  camorosico_05052026_....lis
-  cadetacaco_cobra05052026_....lis
+  camorosico_05052026_HHMM_of_0.lis
+  cadetacaco_cie05052026_HHMM_of_0.lis
 ```
+
+También se acepta el nombre antiguo `cadetacaco_cobra{fecha}...` si no existe el archivo `cie`.
 
 Salidas en `destino/2026/05052026/cartera05052026b/`.
 

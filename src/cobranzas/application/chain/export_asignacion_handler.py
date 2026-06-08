@@ -15,8 +15,6 @@ class ExportAsignacionHandler(Handler):
         self._export = export_service
 
     def _procesar(self, contexto: ProcesoContext) -> ProcesoContext:
-        if not contexto.asignaciones:
-            return contexto
         ids_recblue = {
             c.id_credito: (c.id_credito_recblue or "").strip()
             for c in contexto.creditos_mora

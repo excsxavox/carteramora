@@ -17,6 +17,9 @@ from cobranzas.domain.services.validar_destinatarios_service import (
 from cobranzas.infrastructure.adapters.excel_destinatarios_notificacion_reader import (
     ExcelDestinatariosNotificacionReader,
 )
+from cobranzas.infrastructure.config.settings import Settings
+from cobranzas.jobs.notificaciones_container import build_notificacion_errores_service
+from cobranzas.jobs.notificar_error import notificar_error_pipeline
 
 
 class _CorreoMemoria(CorreoPort):
@@ -93,3 +96,27 @@ def test_servicio_envia_solo_activos(tmp_path: Path):
     assert resultado.destinatarios == ["ana@test.com"]
     assert len(correo.envios) == 1
     assert "archivo no encontrado" in correo.envios[0][2]
+
+
+def test_build_servicio_sin_smtp_retorna_none():
+    cfg = Settings(
+        NOTIFICACIONES_ERRORES_HABILITADO=True,
+        SMTP_HOST=None,
+        DEFERIR_RESOLUCION_RUTAS=True,
+    )
+    assert build_notificacion_errores_service(cfg) is None
+
+
+def test_notificar_sin_smtp_no_lanza():
+    cfg = Settings(
+        NOTIFICACIONES_ERRORES_HABILITADO=True,
+        SMTP_HOST=None,
+        DEFERIR_RESOLUCION_RUTAS=True,
+    )
+    resultado = notificar_error_pipeline(
+        cfg,
+        origen="pipeline",
+        mensajes=["error de prueba"],
+    )
+    assert resultado.enviado is False
+    assert "SMTP" in (resultado.omitido_motivo or "")

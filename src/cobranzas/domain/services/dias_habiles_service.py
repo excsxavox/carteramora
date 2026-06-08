@@ -89,17 +89,29 @@ def _mes_anterior(anio: int, mes: int) -> Tuple[int, int]:
 
 
 def cuota_consta_pagada(
-    vencimiento: date, ultimo_pago: Optional[date], fecha_corte: date
+    vencimiento: date,
+    ultimo_pago: Optional[date],
+    fecha_corte: date,
+    anio_cuota: int,
+    mes_cuota: int,
 ) -> bool:
     """
-    True si el último pago registrado cubre la cuota al corte.
+    True si el último pago cubre la cuota evaluada al corte.
 
-    Solo se consideran pagos con fecha <= fecha de corte.
+    - Mes de consulta (mes del corte): abono del mismo mes/año y con fecha
+      estrictamente posterior al vencimiento (pago el mismo día del vencimiento
+      no cancela mora al corte del día siguiente).
+    - Meses anteriores: basta ultimo_pago >= vencimiento (abono tardío válido).
     """
     if ultimo_pago is None:
         return False
     if ultimo_pago > fecha_corte:
         return False
+    mes_consulta = (fecha_corte.year, fecha_corte.month)
+    if (anio_cuota, mes_cuota) == mes_consulta:
+        if ultimo_pago.year != anio_cuota or ultimo_pago.month != mes_cuota:
+            return False
+        return ultimo_pago > vencimiento
     return ultimo_pago >= vencimiento
 
 
@@ -110,21 +122,19 @@ def cuota_impaga_al_corte(
     ultimo_pago: Optional[date],
 ) -> Optional[Tuple[date, int, int]]:
     """
-    Cuota vencida e impaga más reciente (mes actual o anterior).
+    Cuota impaga del mes de consulta (mes calendario del corte).
 
-    Usa DIA PAGO para el vencimiento y FECHA ULTIMO PAGO para validar abono.
+    Mora temprana solo aplica a la cuota del período actual; meses anteriores
+  ya cubiertos no se mezclan con el último pago del mes previo.
     """
-    anio_prev, mes_prev = _mes_anterior(fecha_corte.year, fecha_corte.month)
-    mejor: Optional[Tuple[date, int, int]] = None
-    for anio, mes in ((fecha_corte.year, fecha_corte.month), (anio_prev, mes_prev)):
-        venc = vencimiento_efectivo(anio, mes, dia_pago, feriados)
-        if venc > fecha_corte:
-            continue
-        if cuota_consta_pagada(venc, ultimo_pago, fecha_corte):
-            continue
-        if mejor is None or venc > mejor[0]:
-            mejor = (venc, anio, mes)
-    return mejor
+    anio = fecha_corte.year
+    mes = fecha_corte.month
+    venc = vencimiento_efectivo(anio, mes, dia_pago, feriados)
+    if venc > fecha_corte:
+        return None
+    if cuota_consta_pagada(venc, ultimo_pago, fecha_corte, anio, mes):
+        return None
+    return (venc, anio, mes)
 
 
 def ultimo_vencimiento_hasta(
@@ -166,9 +176,9 @@ def calcular_cuota_mora(
     """
     Calcula mora según HU:
     - Vencimiento hábil desde DIA PAGO (sáb/dom/feriado → siguiente hábil).
-    - Cuota impaga: vencida al corte y sin pago >= vencimiento (FECHA ULTIMO PAGO).
+    - Cuota impaga: mes de consulta vencido sin pago del mismo mes calendario.
     - Días de mora: solo días hábiles desde el día posterior al vencimiento.
-    - Elegibilidad temprana (1-29): solo por días hábiles; no se excluye por mes calendario.
+    - Mora temprana: solo cuota del mes del corte (no arrastra mes anterior).
     """
     if dia_pago <= 0:
         return CuotaMoraCalculada(

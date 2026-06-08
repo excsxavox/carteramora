@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class MoraTempranaHandler(Handler):
-    """Paso 3: filtros HU-GRC-01, días hábiles y orden por saldo capital."""
+    """Paso 3: mora temprana por DIAS ATRASO (CAMOROSICO) y orden por saldo capital."""
 
     def __init__(
         self,
@@ -54,7 +54,6 @@ class MoraTempranaHandler(Handler):
             dias_max=config.dias_max,
             estados_excluidos=config.estados_excluidos,
             tipos_oper_excluidos=config.tipos_oper_excluidos,
-            usar_calculo_dia_pago=True,
             log_muestra=cfg.log_mora_muestra,
         )
         metricas["reglas_origen"] = config.origen
