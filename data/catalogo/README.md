@@ -19,3 +19,15 @@ Filas: descripción + fecha (M/D/Y) o rango con fecha inicio y fin.
 ```powershell
 python main.py plantilla-feriados
 ```
+
+## Notificaciones de errores
+
+**`notificaciones_errores.xlsx`** (`ARCHIVO_EXCEL_NOTIFICACIONES`)
+
+Columnas: `nombre`, `email`, `activo` (`si`/`no`).
+
+Se usa cuando `NOTIFICACIONES_ERRORES_HABILITADO=true` y falla el pipeline.
+
+```powershell
+python main.py plantilla-notificaciones
+```

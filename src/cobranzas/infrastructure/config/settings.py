@@ -144,6 +144,26 @@ class Settings(BaseSettings):
     )
     api_host: str = Field(default="127.0.0.1", alias="API_HOST")
     api_port: int = Field(default=8000, alias="API_PORT")
+    notificaciones_errores_habilitado: bool = Field(
+        default=False,
+        alias="NOTIFICACIONES_ERRORES_HABILITADO",
+        description="Si true, envía correo ante fallos del pipeline",
+    )
+    archivo_excel_notificaciones: Path = Field(
+        default=Path("data/catalogo/notificaciones_errores.xlsx"),
+        alias="ARCHIVO_EXCEL_NOTIFICACIONES",
+    )
+    notificaciones_asunto_prefijo: str = Field(
+        default="[Cartera Mora]",
+        alias="NOTIFICACIONES_ASUNTO_PREFIJO",
+    )
+    smtp_host: Optional[str] = Field(default=None, alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="SMTP_PORT")
+    smtp_user: Optional[str] = Field(default=None, alias="SMTP_USER")
+    smtp_password: Optional[str] = Field(default=None, alias="SMTP_PASSWORD")
+    smtp_from: Optional[str] = Field(default=None, alias="SMTP_FROM")
+    smtp_use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
+    smtp_use_ssl: bool = Field(default=False, alias="SMTP_USE_SSL")
     deferir_resolucion_rutas: bool = Field(
         default=False,
         alias="DEFERIR_RESOLUCION_RUTAS",

@@ -15,6 +15,7 @@ from cobranzas.infrastructure.persistence.database import (
     init_database,
     verificar_conexion,
 )
+from cobranzas.jobs.notificar_error import notificar_error_pipeline
 from cobranzas.jobs.runner import _configure_logging
 
 logger = logging.getLogger("cobranzas.pipeline")
@@ -124,6 +125,13 @@ def ejecutar_pipeline(
         logger.error("=== Pipeline detenido (código %s) ===", contexto.codigo_salida)
         for msg in contexto.mensajes:
             logger.error("  %s", msg)
+        notificar_error_pipeline(
+            cfg,
+            origen="pipeline",
+            mensajes=contexto.mensajes
+            or [f"Pipeline detenido con código {contexto.codigo_salida}"],
+            fecha_corte=cfg.fecha_corte or "",
+        )
 
     return _resultado_desde_contexto(cfg, contexto)
 
@@ -131,8 +139,19 @@ def ejecutar_pipeline(
 def main() -> int:
     try:
         return ejecutar_pipeline().codigo_salida
-    except Exception:
+    except Exception as exc:
         logger.exception("Error fatal en pipeline")
+        try:
+            cfg = build_settings()
+            notificar_error_pipeline(
+                cfg,
+                origen="pipeline (error fatal)",
+                mensajes=[str(exc)],
+                fecha_corte=cfg.fecha_corte or "",
+                exc=exc,
+            )
+        except Exception:
+            logger.exception("No se pudo enviar notificación de error fatal")
         return 1
 
 
