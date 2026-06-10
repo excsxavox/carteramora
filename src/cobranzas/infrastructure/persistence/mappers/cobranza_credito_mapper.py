@@ -77,7 +77,7 @@ def clasificacion_para_asignacion(
     dias_mora_minimo: int,
     usar_mora_temprana: bool = False,
     mora_temprana_dias_min: int = 1,
-    mora_temprana_dias_max: int = 1,
+    mora_temprana_dias_max: int = 0,
 ) -> Tuple[str, str, str]:
     """
     Clasificación de cobranza para asesores_deuda.
@@ -85,15 +85,13 @@ def clasificacion_para_asignacion(
     Retorna (valor_catalogo, descripcion_catalogo, estado_asesores_deuda).
     El estado operativo del crédito (VIGENTE, CASTIGADO…) queda en deuda.estado.
     """
-    if (
-        usar_mora_temprana
-        and mora_temprana_dias_min <= credito.dias_mora <= mora_temprana_dias_max
-    ):
-        return (
-            CATALOGO_MORA_TEMPRANA,
-            "Mora temprana",
-            ESTADO_ASESOR_MORA_TEMPRANA,
-        )
+    if usar_mora_temprana and credito.dias_mora >= mora_temprana_dias_min:
+        if mora_temprana_dias_max <= 0 or credito.dias_mora <= mora_temprana_dias_max:
+            return (
+                CATALOGO_MORA_TEMPRANA,
+                "Mora temprana",
+                ESTADO_ASESOR_MORA_TEMPRANA,
+            )
 
     estado = credito.clasificar_mora(dias_mora_minimo)
     if estado == EstadoMora.MORA_GRAVE:

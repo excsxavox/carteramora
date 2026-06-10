@@ -60,7 +60,10 @@ def es_cuadro_morosidad(file_path: Path) -> bool:
     return MARCA_CUADRO in primera_linea.upper()
 
 
-def leer_cuadro_morosidad(file_path: Path) -> Tuple[date, Tuple[str, ...], List[Credito]]:
+def leer_cuadro_morosidad(
+    file_path: Path,
+    fecha_corte_override: Optional[date] = None,
+) -> Tuple[date, Tuple[str, ...], List[Credito]]:
     if not file_path.exists():
         raise FileNotFoundError(f"No se encontró el archivo: {file_path}")
 
@@ -75,7 +78,9 @@ def leer_cuadro_morosidad(file_path: Path) -> Tuple[date, Tuple[str, ...], List[
             header_index = index
             break
 
-    if fecha_corte is None:
+    if fecha_corte_override is not None:
+        fecha_corte = fecha_corte_override
+    elif fecha_corte is None:
         raise ValueError("No se encontró la línea CORTE A: en el cuadro de morosidad")
     if header_index is None:
         raise ValueError("No se encontró la fila de encabezados del cuadro de morosidad")

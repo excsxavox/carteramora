@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import sessionmaker
 
 from cobranzas.domain.ports.reglas_repository_port import ReglaNegocio, ReglasRepositoryPort
@@ -65,3 +65,17 @@ class SqlAlchemyReglasRepository(ReglasRepositoryPort):
                 )
             session.commit()
         return len(reglas)
+
+    def actualizar_valor_por_tipo(self, tipo: str, valor: str) -> int:
+        ahora = datetime.utcnow()
+        with self._session_factory() as session:
+            resultado = session.execute(
+                update(Regla)
+                .where(
+                    Regla.activo == True,  # noqa: E712
+                    Regla.tipo == tipo,
+                )
+                .values(valor=valor, fecha_modificacion=ahora)
+            )
+            session.commit()
+            return int(resultado.rowcount or 0)

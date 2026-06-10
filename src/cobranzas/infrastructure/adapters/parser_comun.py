@@ -20,10 +20,11 @@ def leer_lineas_archivo(file_path: Path) -> List[str]:
 
 
 def parse_fecha_corte(line: str) -> date:
+    """Fecha en línea CORTE A: del core (mes/día/año, igual que MMDDYYYY del POST)."""
     match = CORTE_PATTERN.search(line)
     if not match:
         raise ValueError(f"Línea de corte inválida: {line}")
-    return datetime.strptime(match.group(1).strip(), "%d/%m/%Y").date()
+    return datetime.strptime(match.group(1).strip(), "%m/%d/%Y").date()
 
 
 def parse_float(value: str) -> float:

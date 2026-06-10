@@ -128,3 +128,36 @@ class SembrarReglasMoraService:
         insertadas = self._repo.insertar_reglas(list(reglas))
         logger.info("Reglas HU sembradas en BD: %s filas", insertadas)
         return insertadas
+
+    def preparar_reglas(
+        self,
+        estados_excluidos: Sequence[str] = (),
+        tipos_oper_excluidos: Sequence[str] = (),
+        dias_min: int = 1,
+        dias_max: int = 0,
+    ) -> None:
+        """
+        Siembra reglas si la tabla está vacía y alinea MIN/MAX con configuración.
+
+        dias_max=0 → máximo calculado por período de cuota (mes real + DIA PAGO).
+        """
+        insertadas = self.sembrar_si_vacio(
+            estados_excluidos, tipos_oper_excluidos, dias_min, dias_max
+        )
+        if insertadas:
+            return
+
+        actualizadas = 0
+        for tipo, valor in (
+            (MORA_TEMPRANA_DIAS_MIN, str(dias_min)),
+            (MORA_TEMPRANA_DIAS_MAX, str(dias_max)),
+        ):
+            actualizadas += self._repo.actualizar_valor_por_tipo(tipo, valor)
+
+        if actualizadas:
+            logger.info(
+                "Reglas mora temprana sincronizadas desde config | min=%s max=%s "
+                "(0 = calculado por cuota)",
+                dias_min,
+                dias_max,
+            )

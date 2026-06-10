@@ -58,7 +58,17 @@ def fecha_corte_y_creditos():
 
 def test_parse_fecha_corte_desde_encabezado(fecha_corte_y_creditos):
     fecha_corte, _, _ = fecha_corte_y_creditos
-    assert fecha_corte == date(2026, 3, 6)
+    assert fecha_corte == date(2026, 6, 3)
+
+
+def test_fecha_corte_post_mmdyyyy_tiene_prioridad_sobre_archivo():
+    """POST {\"fecha\": \"06032026\"} = 3-jun-2026 (mes/día/año)."""
+    fecha_post = date(2026, 6, 3)
+    fecha_archivo, _, creditos = leer_cuadro_morosidad(
+        FIXTURE_MOROSIDAD, fecha_corte_override=fecha_post
+    )
+    assert fecha_archivo == fecha_post
+    assert all(c.fecha_corte == fecha_post for c in creditos)
 
 
 def test_parse_nueve_operaciones_del_cuadro(fecha_corte_y_creditos):

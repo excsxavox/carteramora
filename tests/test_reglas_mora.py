@@ -41,6 +41,25 @@ class _ReglasMemoria(ReglasRepositoryPort):
         self._reglas.extend(reglas)
         return len(reglas)
 
+    def actualizar_valor_por_tipo(self, tipo: str, valor: str) -> int:
+        actualizadas = 0
+        nuevas: list[ReglaNegocio] = []
+        for regla in self._reglas:
+            if regla.tipo == tipo:
+                nuevas.append(
+                    ReglaNegocio(
+                        tipo=regla.tipo,
+                        valor=valor,
+                        prioridad=regla.prioridad,
+                        nombre=regla.nombre,
+                    )
+                )
+                actualizadas += 1
+            else:
+                nuevas.append(regla)
+        self._reglas = nuevas
+        return actualizadas
+
 
 def test_resolver_usa_reglas_bd():
     repo = _ReglasMemoria(
@@ -51,7 +70,7 @@ def test_resolver_usa_reglas_bd():
             ReglaNegocio(MORA_TEMPRANA_DIAS_MAX, "28"),
         ]
     )
-    config = ResolverReglasMoraService(repo).resolver(
+    config = ResolverReglasMoraService(repo, usar_reglas_bd=True).resolver(
         dias_min=1,
         dias_max=29,
         estados_excluidos=("OTRO",),
@@ -62,6 +81,24 @@ def test_resolver_usa_reglas_bd():
     assert config.dias_max == 28
     assert config.estados_excluidos == ("CASTIGADO",)
     assert config.tipos_oper_excluidos == ("COMPRA CARTERA",)
+
+
+def test_resolver_default_no_usa_bd_aunque_haya_reglas():
+    repo = _ReglasMemoria(
+        [
+            ReglaNegocio(MORA_TEMPRANA_DIAS_MIN, "9"),
+            ReglaNegocio(MORA_TEMPRANA_DIAS_MAX, "1"),
+        ]
+    )
+    config = ResolverReglasMoraService(repo).resolver(
+        dias_min=1,
+        dias_max=0,
+        estados_excluidos=("JUDICIAL",),
+        tipos_oper_excluidos=(),
+    )
+    assert config.origen == "env"
+    assert config.dias_min == 1
+    assert config.dias_max == 0
 
 
 def test_resolver_fallback_env_si_bd_vacia():
@@ -99,6 +136,18 @@ def test_excluye_judicial_con_regla_bd(tmp_path):
         tipos_oper_excluidos=(),
     )
     assert len(elegibles) == 0
+
+
+def test_preparar_reglas_sincroniza_max_calculado():
+    repo = _ReglasMemoria(
+        [
+            ReglaNegocio(MORA_TEMPRANA_DIAS_MIN, "1"),
+            ReglaNegocio(MORA_TEMPRANA_DIAS_MAX, "1"),
+        ]
+    )
+    SembrarReglasMoraService(repo).preparar_reglas(dias_min=1, dias_max=0)
+    reglas = {r.tipo: r.valor for r in repo.listar_activas_por_tipos(frozenset({MORA_TEMPRANA_DIAS_MAX, MORA_TEMPRANA_DIAS_MIN}))}
+    assert reglas[MORA_TEMPRANA_DIAS_MAX] == "0"
 
 
 def test_sembrar_reglas_sqlite(tmp_path):

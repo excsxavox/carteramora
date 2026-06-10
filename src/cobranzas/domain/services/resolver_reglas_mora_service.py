@@ -19,8 +19,8 @@ logger = logging.getLogger("cobranzas.reglas")
 class ResolverReglasMoraService:
     def __init__(
         self,
-        repository: ReglasRepositoryPort,
-        usar_reglas_bd: bool = True,
+        repository: Optional[ReglasRepositoryPort] = None,
+        usar_reglas_bd: bool = False,
     ) -> None:
         self._repo = repository
         self._usar_reglas_bd = usar_reglas_bd
@@ -45,11 +45,24 @@ class ResolverReglasMoraService:
             ),
             origen="env",
         )
-        if not self._usar_reglas_bd:
+        if not self._usar_reglas_bd or self._repo is None:
+            logger.info(
+                "Reglas mora temprana desde .env | días %s-%s "
+                "(max=0 calculado por cuota) | exclusiones estado=%s tipo_oper=%s",
+                fallback.dias_min,
+                fallback.dias_max,
+                len(fallback.estados_excluidos),
+                len(fallback.tipos_oper_excluidos),
+            )
             return fallback
 
         reglas = self._repo.listar_activas_por_tipos(TIPOS_MORA_TEMPRANA)
         if not reglas:
+            logger.info(
+                "Reglas mora temprana desde .env (BD sin filas) | días %s-%s",
+                fallback.dias_min,
+                fallback.dias_max,
+            )
             return fallback
 
         estados: list[str] = []

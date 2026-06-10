@@ -1,7 +1,7 @@
 import csv
 from datetime import date
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from cobranzas.domain.models.credito import Credito
 from cobranzas.infrastructure.adapters.cuadro_morosidad_parser import (
@@ -22,12 +22,16 @@ CAMPOS_CREDITO = [
 ]
 
 
-def leer_creditos_tsv(file_path: Path) -> List[Credito]:
+def leer_creditos_tsv(
+    file_path: Path, fecha_corte: Optional[date] = None
+) -> List[Credito]:
     if not file_path.exists():
         raise FileNotFoundError(f"No se encontró el archivo: {file_path}")
 
     if es_cuadro_morosidad(file_path):
-        _, _, creditos = leer_cuadro_morosidad(file_path)
+        _, _, creditos = leer_cuadro_morosidad(
+            file_path, fecha_corte_override=fecha_corte
+        )
         return creditos
 
     creditos: List[Credito] = []

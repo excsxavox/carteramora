@@ -23,3 +23,7 @@ class ReglasRepositoryPort(ABC):
     @abstractmethod
     def insertar_reglas(self, reglas: List[ReglaNegocio]) -> int:
         """Inserta reglas nuevas; retorna cantidad insertada."""
+
+    @abstractmethod
+    def actualizar_valor_por_tipo(self, tipo: str, valor: str) -> int:
+        """Actualiza valor de reglas activas del tipo; retorna filas afectadas."""

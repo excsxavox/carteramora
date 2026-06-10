@@ -159,8 +159,12 @@ def ejecutar_seguimiento(
     print(f"  CAMOROSICO : {rutas.archivo_morosidad}")
     print(f"  CADETACACO : {rutas.archivo_cartera}")
 
-    _, _, morosidad = leer_cuadro_morosidad(rutas.archivo_morosidad)
-    _, _, cartera = leer_te_detallado_cartera(rutas.archivo_cartera)
+    _, _, morosidad = leer_cuadro_morosidad(
+        rutas.archivo_morosidad, fecha_corte_override=fecha_corte
+    )
+    _, _, cartera = leer_te_detallado_cartera(
+        rutas.archivo_cartera, fecha_corte_override=fecha_corte
+    )
 
     cred_mora = _buscar_credito(morosidad, numero_operacion)
     cred_cartera = _buscar_credito(cartera, numero_operacion)

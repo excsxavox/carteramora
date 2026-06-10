@@ -56,7 +56,7 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         recblue: Optional[RecbluePort] = None,
         usar_mora_temprana: bool = False,
         mora_temprana_dias_min: int = 1,
-        mora_temprana_dias_max: int = 1,
+        mora_temprana_dias_max: int = 0,
     ) -> None:
         self._session_factory = session_factory
         self._dias_mora_minimo = dias_mora_minimo

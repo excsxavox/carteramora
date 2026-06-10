@@ -54,7 +54,7 @@ def fecha_corte_y_creditos_cartera():
 
 def test_parse_fecha_corte_cartera(fecha_corte_y_creditos_cartera):
     fecha_corte, _, _ = fecha_corte_y_creditos_cartera
-    assert fecha_corte == date(2026, 3, 6)
+    assert fecha_corte == date(2026, 6, 3)
 
 
 def test_parse_operaciones_te_detallado(fecha_corte_y_creditos_cartera):

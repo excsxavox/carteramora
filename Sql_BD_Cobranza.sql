@@ -326,6 +326,17 @@ REFERENCES [dbo].[deudores] ([id_deudor])
 GO
 ALTER TABLE [dbo].[deuda] CHECK CONSTRAINT [fk_deuda_deudores]
 GO
+/* Reglas HU-GRC-01: MORA_TEMPRANA_DIAS_MAX=0 → máximo calculado por período de cuota */
+INSERT INTO [dbo].[reglas] ([nombre], [descripcion], [tipo], [valor], [prioridad], [activo], [creado_en], [fecha_modificacion])
+VALUES
+(N'Excluir castigado', N'Excluir estado CASTIGADO', N'EXCLUSION_ESTADO', N'CASTIGADO', 10, 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
+(N'Excluir judicial', N'Excluir estado JUDICIAL', N'EXCLUSION_ESTADO', N'JUDICIAL', 20, 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
+(N'Excluir gestión judicial', N'Excluir estado GESTION JUDICIAL', N'EXCLUSION_ESTADO', N'GESTION JUDICIAL', 30, 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
+(N'Excluir compra de cartera', N'Excluir tipo oper COMPRA CARTERA', N'EXCLUSION_TIPO_OPER', N'COMPRA CARTERA', 10, 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
+(N'Excluir compracartera', N'Excluir tipo oper COMPRACARTERA', N'EXCLUSION_TIPO_OPER', N'COMPRACARTERA', 20, 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
+(N'Mora temprana días mínimo', N'Mínimo días hábiles mora temprana', N'MORA_TEMPRANA_DIAS_MIN', N'1', 0, 1, SYSUTCDATETIME(), SYSUTCDATETIME()),
+(N'Mora temprana días máximo', N'0 = máximo calculado por cuota (mes y DIA PAGO)', N'MORA_TEMPRANA_DIAS_MAX', N'0', 0, 1, SYSUTCDATETIME(), SYSUTCDATETIME());
+GO
 USE [master]
 GO
 ALTER DATABASE [BD_Cobranza] SET  READ_WRITE 

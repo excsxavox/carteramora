@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -95,9 +96,9 @@ class Settings(BaseSettings):
     dias_mora_minimo: int = Field(default=30, alias="DIAS_MORA_MINIMO")
     usar_mora_temprana: bool = Field(default=True, alias="USAR_MORA_TEMPRANA")
     usar_reglas_bd: bool = Field(
-        default=True,
+        default=False,
         alias="USAR_REGLAS_BD",
-        description="Si true, exclusiones y rango días desde tabla reglas",
+        description="Si true, exclusiones y rango días desde tabla reglas (default: .env)",
     )
     mora_temprana_dias_min: int = Field(default=1, alias="MORA_TEMPRANA_DIAS_MIN")
     mora_temprana_dias_max: int = Field(
@@ -173,6 +174,12 @@ class Settings(BaseSettings):
         alias="DEFERIR_RESOLUCION_RUTAS",
         description="Si true, no valida carpetas .lis al cargar Settings (modo API)",
     )
+
+    def fecha_corte_efectiva(self) -> Optional[date]:
+        """Fecha de corte del POST/.env (MMDDYYYY). None si no está definida."""
+        if not self.fecha_corte:
+            return None
+        return parsear_fecha_corte(self.fecha_corte)
 
     @model_validator(mode="after")
     def _aplicar_rutas_automaticas(self) -> "Settings":

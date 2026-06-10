@@ -65,7 +65,10 @@ def es_te_detallado_cartera(file_path: Path) -> bool:
     return any(marca in primera_linea for marca in MARCAS_CARTERA)
 
 
-def leer_te_detallado_cartera(file_path: Path) -> Tuple[date, Tuple[str, ...], List[Credito]]:
+def leer_te_detallado_cartera(
+    file_path: Path,
+    fecha_corte_override: Optional[date] = None,
+) -> Tuple[date, Tuple[str, ...], List[Credito]]:
     if not file_path.exists():
         raise FileNotFoundError(f"No se encontró el archivo: {file_path}")
 
@@ -80,7 +83,9 @@ def leer_te_detallado_cartera(file_path: Path) -> Tuple[date, Tuple[str, ...], L
             header_index = index
             break
 
-    if fecha_corte is None:
+    if fecha_corte_override is not None:
+        fecha_corte = fecha_corte_override
+    elif fecha_corte is None:
         raise ValueError("No se encontró la línea CORTE A: en el TE detallado de cartera")
     if header_index is None:
         raise ValueError("No se encontró la fila de encabezados del TE detallado de cartera")

@@ -95,16 +95,19 @@ def build_procesar_cobranzas_use_case(
             )
 
     if cfg.usar_mora_temprana and session_factory is not None:
-        reglas_repo = SqlAlchemyReglasRepository(session_factory)
-        SembrarReglasMoraService(reglas_repo).sembrar_si_vacio(
-            estados_excluidos=_lista_csv(cfg.estados_excluidos),
-            tipos_oper_excluidos=_lista_csv(cfg.tipos_oper_excluidos),
-            dias_min=cfg.mora_temprana_dias_min,
-            dias_max=cfg.mora_temprana_dias_max,
-        )
-        reglas_resolver = ResolverReglasMoraService(
-            reglas_repo, usar_reglas_bd=cfg.usar_reglas_bd
-        )
+        if cfg.usar_reglas_bd:
+            reglas_repo = SqlAlchemyReglasRepository(session_factory)
+            SembrarReglasMoraService(reglas_repo).preparar_reglas(
+                estados_excluidos=_lista_csv(cfg.estados_excluidos),
+                tipos_oper_excluidos=_lista_csv(cfg.tipos_oper_excluidos),
+                dias_min=cfg.mora_temprana_dias_min,
+                dias_max=cfg.mora_temprana_dias_max,
+            )
+            reglas_resolver = ResolverReglasMoraService(
+                reglas_repo, usar_reglas_bd=True
+            )
+        else:
+            reglas_resolver = ResolverReglasMoraService(usar_reglas_bd=False)
         feriados_repo = SqlAlchemyFeriadosCalendarioRepository(
             session_factory, cfg.clave_feriados
         )
@@ -119,9 +122,15 @@ def build_procesar_cobranzas_use_case(
             recblue=recblue_adapter,
         )
 
+    fecha_corte = cfg.fecha_corte_efectiva()
+
     return ProcesarCobranzasUseCase.crear(
-        morosidad_repository=TsvCreditoRepository(cfg.archivo_morosidad),
-        cartera_repository=TsvCarteraRepository(cfg.archivo_cartera),
+        morosidad_repository=TsvCreditoRepository(
+            cfg.archivo_morosidad, fecha_corte=fecha_corte
+        ),
+        cartera_repository=TsvCarteraRepository(
+            cfg.archivo_cartera, fecha_corte=fecha_corte
+        ),
         cobranzas_service=CobranzasService(),
         cartera_merge_service=CarteraMergeService(),
         dias_mora_minimo=cfg.dias_mora_minimo,
