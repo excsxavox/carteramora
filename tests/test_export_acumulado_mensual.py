@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -99,7 +100,7 @@ def test_rutas_entregables_mensuales(tmp_path: Path):
     )
 
 
-def test_excel_acumulado_anexa_y_reemplaza_mismo_dia(tmp_path: Path):
+def test_excel_acumulado_una_fila_por_operacion(tmp_path: Path):
     archivo = tmp_path / "acumulado.xlsx"
     writer = ExcelAcumuladoWriter()
     dia1 = date(2026, 5, 5)
@@ -112,10 +113,46 @@ def test_excel_acumulado_anexa_y_reemplaza_mismo_dia(tmp_path: Path):
     libro = load_workbook(archivo, read_only=True, data_only=True)
     hoja = libro.active
     filas = list(hoja.iter_rows(min_row=2, values_only=True))
-    assert len(filas) == 2
+    assert len(filas) == 3
     operaciones = {str(f[4]) for f in filas}
-    assert operaciones == {"002", "003"}
+    assert operaciones == {"001", "002", "003"}
     libro.close()
+
+
+def test_excel_acumulado_actualiza_operacion_existente(tmp_path: Path):
+    archivo = tmp_path / "acumulado.xlsx"
+    writer = ExcelAcumuladoWriter()
+    dia1 = date(2026, 5, 5)
+    dia2 = date(2026, 5, 6)
+
+    writer.anexar_lote(archivo, dia1, [_fila_ejemplo(dia1, "001")])
+    writer.anexar_lote(
+        archivo,
+        dia2,
+        [
+            replace(
+                _fila_ejemplo(dia2, "001"),
+                fecha_proceso=dia2,
+                nombre="CLIENTE ACTUALIZADO",
+            )
+        ],
+    )
+
+    libro = load_workbook(archivo, read_only=True, data_only=True)
+    filas = list(libro.active.iter_rows(min_row=2, values_only=True))
+    libro.close()
+
+    assert len(filas) == 1
+    assert filas[0][2] == "CLIENTE ACTUALIZADO"
+    assert _parsear_fecha_desde_excel(filas[0][0]) == dia2
+
+
+def _parsear_fecha_desde_excel(valor) -> date:
+    from datetime import datetime
+
+    if isinstance(valor, datetime):
+        return valor.date()
+    return datetime.strptime(str(valor), "%m/%d/%Y").date()
 
 
 def test_excel_acumulado_encabezados(tmp_path: Path):

@@ -15,6 +15,6 @@ class AcumuladoExcelPort(ABC):
         filas: List[FilaAcumuladoMensual],
     ) -> int:
         """
-        Reemplaza filas del mismo fecha_proceso y agrega el lote.
-        Retorna cantidad de filas escritas.
+        Actualiza o agrega por OPERACION (una fila por operación en el mes).
+        Retorna cantidad de filas del lote procesado.
         """

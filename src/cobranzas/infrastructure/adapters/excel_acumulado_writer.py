@@ -47,6 +47,7 @@ COLUMNAS: tuple[str, ...] = (
 )
 
 _IDX_FECHA_PROCESO = COLUMNAS.index("FECHA DEL PROCESO")
+_IDX_OPERACION = COLUMNAS.index("OPERACION")
 
 
 def _formatear_fecha(valor: Optional[date]) -> str:
@@ -115,25 +116,31 @@ def _parsear_fecha_celda(valor) -> Optional[date]:
     return None
 
 
-def _filas_sin_fecha(
-    hoja, fecha_corte: date, columnas: Sequence[str]
-) -> list[list[object]]:
-    """Conserva filas cuyo FECHA DEL PROCESO no coincide con el lote actual."""
+def _mapa_por_operacion(hoja, columnas: Sequence[str]) -> dict[str, list[object]]:
+    """Carga filas existentes indexadas por OPERACION (sin duplicar)."""
     if hoja.max_row < 2:
-        return []
+        return {}
     encabezados = [str(c.value or "").strip() for c in hoja[1]]
     if encabezados != list(columnas):
-        return []
+        return {}
 
-    conservadas: list[list[object]] = []
+    por_operacion: dict[str, list[object]] = {}
     for fila in hoja.iter_rows(min_row=2, values_only=True):
         if not fila or all(v is None or v == "" for v in fila):
             continue
-        fecha_fila = _parsear_fecha_celda(fila[_IDX_FECHA_PROCESO])
-        if fecha_fila == fecha_corte:
-            continue
-        conservadas.append(list(fila))
-    return conservadas
+        operacion = str(fila[_IDX_OPERACION] or "").strip()
+        if operacion:
+            por_operacion[operacion] = list(fila)
+    return por_operacion
+
+
+def _ordenar_filas(filas: Sequence[Sequence[object]]) -> list[list[object]]:
+    def clave(fila: Sequence[object]) -> tuple:
+        fecha = _parsear_fecha_celda(fila[_IDX_FECHA_PROCESO])
+        operacion = str(fila[_IDX_OPERACION] or "").strip()
+        return (fecha or date.min, operacion)
+
+    return sorted((list(f) for f in filas), key=clave)
 
 
 class ExcelAcumuladoWriter(AcumuladoExcelPort):
@@ -145,24 +152,23 @@ class ExcelAcumuladoWriter(AcumuladoExcelPort):
     ) -> int:
         archivo.parent.mkdir(parents=True, exist_ok=True)
 
+        por_operacion: dict[str, list[object]] = {}
         if archivo.is_file():
-            libro = load_workbook(archivo)
-            hoja = libro.active
-            previas = _filas_sin_fecha(hoja, fecha_corte, COLUMNAS)
-            libro = Workbook()
-            hoja = libro.active
-            hoja.title = "Acumulado"
-            hoja.append(list(COLUMNAS))
-            for fila in previas:
-                hoja.append(fila)
-        else:
-            libro = Workbook()
-            hoja = libro.active
-            hoja.title = "Acumulado"
-            hoja.append(list(COLUMNAS))
+            libro = load_workbook(archivo, read_only=True, data_only=True)
+            por_operacion = _mapa_por_operacion(libro.active, COLUMNAS)
+            libro.close()
 
         for fila in filas:
-            hoja.append(_fila_a_valores(fila))
+            operacion = fila.operacion.strip()
+            if operacion:
+                por_operacion[operacion] = _fila_a_valores(fila)
+
+        libro = Workbook()
+        hoja = libro.active
+        hoja.title = "Acumulado"
+        hoja.append(list(COLUMNAS))
+        for fila in _ordenar_filas(por_operacion.values()):
+            hoja.append(fila)
 
         libro.save(archivo)
         return len(filas)
