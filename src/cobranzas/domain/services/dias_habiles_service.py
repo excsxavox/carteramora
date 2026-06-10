@@ -88,6 +88,60 @@ def _mes_anterior(anio: int, mes: int) -> Tuple[int, int]:
     return anio, mes - 1
 
 
+def _mes_siguiente(anio: int, mes: int) -> Tuple[int, int]:
+    if mes == 12:
+        return anio + 1, 1
+    return anio, mes + 1
+
+
+def max_dias_mora_periodo_cuota(
+    vencimiento: date,
+    anio_cuota: int,
+    mes_cuota: int,
+    dia_pago: int,
+    feriados: Set[date],
+) -> int:
+    """
+    Máximo de días hábiles de mora temprana dentro del plazo de la cuota.
+
+    El plazo va desde el día posterior al vencimiento efectivo de la cuota
+    hasta el fin del mes calendario de la cuota (28/29/30/31 según mes) o el día
+    anterior al siguiente vencimiento (lo que ocurra antes). Si la mora cruza al
+    mes siguiente con la misma cuota, deja de ser temprana (mes_cuota vs mes_corte).
+    """
+    ultimo_dia_mes = date(
+        anio_cuota, mes_cuota, monthrange(anio_cuota, mes_cuota)[1]
+    )
+    anio_sig, mes_sig = _mes_siguiente(anio_cuota, mes_cuota)
+    venc_siguiente = vencimiento_efectivo(anio_sig, mes_sig, dia_pago, feriados)
+    fin_plazo = min(ultimo_dia_mes, venc_siguiente - timedelta(days=1))
+    if fin_plazo <= vencimiento:
+        return 0
+    return contar_dias_mora_habiles(vencimiento, fin_plazo, feriados)
+
+
+def dias_max_mora_temprana_efectivo(
+    vencimiento: date,
+    anio_cuota: int,
+    mes_cuota: int,
+    dia_pago: int,
+    feriados: Set[date],
+    dias_max_config: int,
+) -> int:
+    """
+    Tope de mora temprana para la cuota (días hábiles).
+
+    Por defecto (dias_max_config <= 0) se calcula solo del período de la cuota
+    (mes real + DIA PAGO). Un valor > 0 en config actúa como techo opcional.
+    """
+    tope_periodo = max_dias_mora_periodo_cuota(
+        vencimiento, anio_cuota, mes_cuota, dia_pago, feriados
+    )
+    if dias_max_config <= 0:
+        return tope_periodo
+    return min(dias_max_config, tope_periodo)
+
+
 def cuota_consta_pagada(
     vencimiento: date,
     ultimo_pago: Optional[date],

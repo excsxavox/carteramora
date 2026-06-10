@@ -9,6 +9,7 @@ from typing import List, Optional, Sequence, Set, Tuple
 from cobranzas.domain.models.credito import Credito
 from cobranzas.domain.services.dias_habiles_service import (
     calcular_cuota_mora,
+    dias_max_mora_temprana_efectivo,
     parse_fecha_cadetacaco,
     vencimiento_efectivo,
 )
@@ -150,7 +151,8 @@ class MoraTempranaService:
         - Lista base: operaciones en CAMOROSICO (DIAS ATRASO > 0).
         - Días de mora temprana: DIA PAGO + feriados + solo días hábiles.
         - Cuota del período actual (mes del corte); mes anterior impago → madura.
-        - Rango [dias_min, dias_max] sobre días hábiles calculados.
+        - Rango [dias_min, dias_max_efectivo]: 1..N días hábiles dentro del plazo
+          de la cuota (desde vencimiento DIA PAGO hasta fin de ese período).
         - CAMOROSICO (DIAS ATRASO) complementa; no reemplaza el cálculo hábil.
         """
         estados_excl = tuple(
@@ -262,22 +264,33 @@ class MoraTempranaService:
                 )
                 continue
 
+            dias_max_efectivo = dias_max_mora_temprana_efectivo(
+                vencimiento,
+                cuota.anio_cuota,
+                cuota.mes_cuota,
+                dia_pago,
+                feriados,
+                dias_max,
+            )
+
             if dias < dias_min:
                 _log_decision(
                     "fuera_rango_bajo",
                     f"Mora | op={op} | FUERA_RANGO | {base_detalle} | motivo=dias<{dias_min}",
                 )
                 continue
-            if dias > dias_max:
+            if dias_max_efectivo <= 0 or dias > dias_max_efectivo:
                 _log_decision(
                     "fuera_rango_alto",
-                    f"Mora | op={op} | FUERA_RANGO | {base_detalle} | motivo=dias>{dias_max}",
+                    f"Mora | op={op} | FUERA_RANGO | {base_detalle} "
+                    f"| motivo=dias>{dias_max_efectivo} (plazo_cuota)",
                 )
                 continue
 
             _log_decision(
                 "elegible",
-                f"Mora | op={op} | ELEGIBLE mora_temprana | {base_detalle}",
+                f"Mora | op={op} | ELEGIBLE mora_temprana | {base_detalle} "
+                f"| plazo_max={dias_max_efectivo}",
             )
             actualizado = replace(credito, dias_mora=dias)
             elegibles.append(actualizado)

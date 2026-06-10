@@ -3,7 +3,9 @@ from datetime import date, timedelta
 from cobranzas.domain.services.dias_habiles_service import (
     calcular_cuota_mora,
     contar_dias_mora_habiles,
+    dias_max_mora_temprana_efectivo,
     dias_mora_temprana,
+    max_dias_mora_periodo_cuota,
     siguiente_dia_habil,
     vencimiento_efectivo,
 )
@@ -114,4 +116,37 @@ def test_ultimo_pago_posterior_al_corte_no_cuenta():
     )
     assert resultado.clasificacion == "al_dia"
     assert resultado.mes_cuota == 4
+    assert resultado.dias == 0
+
+
+def test_max_dias_mora_periodo_cuota_dia_pago_5_mayo():
+    feriados: set[date] = set()
+    venc = vencimiento_efectivo(2026, 5, 5, feriados)
+    max_dias = max_dias_mora_periodo_cuota(venc, 2026, 5, 5, feriados)
+    assert max_dias > 1
+    corte = date(2026, 5, 20)
+    dias_corte = contar_dias_mora_habiles(venc, corte, feriados)
+    assert dias_corte <= max_dias
+    assert dias_max_mora_temprana_efectivo(
+        venc, 2026, 5, 5, feriados, dias_max_config=0
+    ) == max_dias
+
+
+def test_max_dias_mora_periodo_varia_segun_mes_calendario():
+    feriados: set[date] = set()
+    venc_feb = vencimiento_efectivo(2026, 2, 5, feriados)
+    venc_may = vencimiento_efectivo(2026, 5, 5, feriados)
+    max_feb = max_dias_mora_periodo_cuota(venc_feb, 2026, 2, 5, feriados)
+    max_may = max_dias_mora_periodo_cuota(venc_may, 2026, 5, 5, feriados)
+    assert max_feb < max_may
+
+
+def test_dia_pago_5_sin_mora_si_mayo_pagado_antes_de_junio():
+    """Mayo pagado: al 31-may la cuota de junio (vence 5-jun) aún no genera mora."""
+    feriados: set[date] = set()
+    corte = date(2026, 5, 31)
+    resultado = calcular_cuota_mora(
+        corte, 5, feriados, ultimo_pago=date(2026, 5, 6)
+    )
+    assert resultado.clasificacion == "al_dia"
     assert resultado.dias == 0

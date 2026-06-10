@@ -100,7 +100,11 @@ class Settings(BaseSettings):
         description="Si true, exclusiones y rango días desde tabla reglas",
     )
     mora_temprana_dias_min: int = Field(default=1, alias="MORA_TEMPRANA_DIAS_MIN")
-    mora_temprana_dias_max: int = Field(default=1, alias="MORA_TEMPRANA_DIAS_MAX")
+    mora_temprana_dias_max: int = Field(
+        default=0,
+        alias="MORA_TEMPRANA_DIAS_MAX",
+        description="0 = máximo calculado por período de cuota (mes y DIA PAGO); >0 techo opcional",
+    )
     estados_excluidos: str = Field(
         default="CASTIGADO,JUDICIAL,GESTION JUDICIAL",
         alias="ESTADOS_EXCLUIDOS",

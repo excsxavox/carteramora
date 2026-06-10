@@ -118,6 +118,26 @@ def test_34_dias_camorosico_no_entra_mora_temprana():
     )
 
 
+def test_varios_dias_dentro_plazo_cuota_entra_temprana():
+    servicio = MoraTempranaService()
+    credito = _credito(
+        id_credito="PLAZO",
+        fecha_corte=date(2026, 5, 20),
+        dias_mora=10,
+        campos_tab=(("dia_pago", "5"),),
+    )
+    elegibles, _ = servicio.procesar(
+        [credito],
+        feriados=set(),
+        dias_min=1,
+        dias_max=0,
+        estados_excluidos=(),
+        tipos_oper_excluidos=(),
+    )
+    assert len(elegibles) == 1
+    assert elegibles[0].dias_mora > 1
+
+
 def test_sin_dia_pago_no_entra():
     servicio = MoraTempranaService()
     credito = _credito(dias_mora=1, campos_tab=())
