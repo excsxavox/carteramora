@@ -208,6 +208,7 @@ CREATE TABLE [dbo].[deuda](
 	[estado] [varchar](100) NULL,
 	[oficial] [varchar](200) NULL,
 	[dias_mora] [int] NULL,
+	[dias_atraso_camorosico] [int] NULL,
 	[fecha_ingreso] [date] NULL,
 	[tipo] [varchar](50) NULL,
 	[dia_pago] [int] NULL,
