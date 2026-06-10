@@ -12,6 +12,7 @@ class PipelineRunResult:
     archivo_salida_morosidad: str
     archivo_salida_mora: str
     archivo_asignacion: str
+    archivo_acumulado_mensual: Optional[str] = None
     total_en_mora: Optional[int] = None
     total_saldo_mora: Optional[float] = None
     registros_persistidos_bd: Optional[int] = None
@@ -32,6 +33,7 @@ class PipelineRunResult:
                     "detalle_morosidad": self.archivo_salida_morosidad,
                     "reporte_mora": self.archivo_salida_mora,
                     "asignacion_csv": self.archivo_asignacion,
+                    "acumulado_mensual_xlsx": self.archivo_acumulado_mensual,
                 },
             },
             "resumen": {

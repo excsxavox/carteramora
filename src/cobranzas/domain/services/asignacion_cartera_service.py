@@ -10,6 +10,7 @@ from cobranzas.domain.models.credito import Credito
 from cobranzas.domain.ports.asignacion_mensual_port import AsignacionMensualPort
 from cobranzas.domain.ports.asesores_rotacion_port import AsesoresRotacionPort
 from cobranzas.domain.ports.recblue_port import RecbluePort
+from cobranzas.domain.services.asignacion_calendario import debe_asignar_asesores
 from cobranzas.domain.services.mora_temprana_service import saldo_capital_desde_credito
 
 logger = logging.getLogger("cobranzas.asignacion")
@@ -46,8 +47,28 @@ class AsignacionCarteraService:
         creditos: List[Credito],
         fecha_corte: date,
     ) -> Tuple[List[Credito], List[AsignacionCredito]]:
+        if not debe_asignar_asesores(fecha_corte):
+            logger.info(
+                "Asignación omitida | %s | último día del mes | solo historial en BD",
+                fecha_corte.isoformat(),
+            )
+            return list(creditos), []
+
         rotacion = self._cargar_rotacion()
         existentes = self._cargar_asignaciones_mes(fecha_corte)
+        if existentes:
+            logger.info(
+                "Asignación | mes %04d-%02d | ya asignadas en BD=%s (se conservan)",
+                fecha_corte.year,
+                fecha_corte.month,
+                len(existentes),
+            )
+        else:
+            logger.info(
+                "Asignación | mes %04d-%02d | sin asignaciones previas | rotación nueva",
+                fecha_corte.year,
+                fecha_corte.month,
+            )
         ids_recblue = self._recblue.id_credito_por_operacion() if self._recblue else {}
 
         creditos_asignados: List[Credito] = []

@@ -84,6 +84,9 @@ class Deuda(Base):
     estado: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     oficial: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     dias_mora: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    dias_atraso_camorosico: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )
     fecha_ingreso: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     tipo: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     dia_pago: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)

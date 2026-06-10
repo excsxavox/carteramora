@@ -5,6 +5,7 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
+from cobranzas.infrastructure.config.entregables_mensuales import ruta_asignacion_mensual
 from cobranzas.infrastructure.config.fecha_corte import (
     fecha_corte_mmddyyyy,
     parsear_fecha_corte,
@@ -182,9 +183,12 @@ def resolver_rutas_cartera(
       destino/2026/05042026/cartera05042026b/...
     """
     ftxt = fecha_mmddyyyy or fecha_corte_mmddyyyy(fecha)
+    fecha_date = fecha or parsear_fecha_corte(ftxt)
     carpeta_entrada = carpeta_lote_docsmora(directorio_docsmora, ftxt)
     carpeta_salida = carpeta_lote_destino(directorio_destino, ftxt)
     carpeta_salida.mkdir(parents=True, exist_ok=True)
+    carpeta_entregables = ruta_asignacion_mensual(directorio_destino, fecha_date).parent
+    carpeta_entregables.mkdir(parents=True, exist_ok=True)
 
     morosidad = _buscar_lis_en_lote(
         carpeta_entrada,
@@ -209,5 +213,5 @@ def resolver_rutas_cartera(
         archivo_cartera=cartera,
         archivo_salida_morosidad=carpeta_salida / "detalle_morosidad.lis",
         archivo_salida_mora=carpeta_salida / "reporte_mora.lis",
-        archivo_salida_asignacion=carpeta_salida / "ASIGNACION.csv",
+        archivo_salida_asignacion=ruta_asignacion_mensual(directorio_destino, fecha_date),
     )

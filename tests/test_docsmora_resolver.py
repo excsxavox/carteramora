@@ -37,7 +37,9 @@ def test_resolver_encuentra_archivos_del_dia(tmp_path: Path):
     )
     assert rutas.archivo_morosidad == mor
     assert rutas.archivo_cartera == car
-    assert rutas.archivo_salida_asignacion.parent == tmp_path / "destino" / "2026" / fecha / f"cartera{fecha}b"
+    assert rutas.archivo_salida_asignacion == (
+        tmp_path / "destino" / "2026" / "05" / "ASIGNACION_05052026.csv"
+    )
 
 
 def test_resolver_falla_si_no_hay_carpeta(tmp_path: Path):

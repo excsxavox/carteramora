@@ -29,6 +29,7 @@ INSERT INTO @cols (sql) VALUES
 ('ALTER TABLE deuda ADD estado VARCHAR(100) NULL'),
 ('ALTER TABLE deuda ADD oficial VARCHAR(200) NULL'),
 ('ALTER TABLE deuda ADD dias_mora INT NULL'),
+('ALTER TABLE deuda ADD dias_atraso_camorosico INT NULL'),
 ('ALTER TABLE deuda ADD fecha_ingreso DATE NULL'),
 ('ALTER TABLE deuda ADD tipo VARCHAR(50) NULL'),
 ('ALTER TABLE deuda ADD dia_pago INT NULL'),

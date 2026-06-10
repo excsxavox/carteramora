@@ -48,6 +48,8 @@ def main() -> int:
             result.asignaciones_generadas,
             result.archivo_asignacion,
         )
+    if result.archivo_acumulado_mensual:
+        logger.info("Acumulado mensual: %s", result.archivo_acumulado_mensual)
     return 0
 
 

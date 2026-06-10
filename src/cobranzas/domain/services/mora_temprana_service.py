@@ -198,7 +198,6 @@ class MoraTempranaService:
 
             dia_pago = dia_pago_desde_credito(credito)
             if dia_pago <= 0:
-                contadores["sin_dia_pago"] += 1
                 _log_decision(
                     "sin_dia_pago",
                     f"Mora | op={op} | NO_TEMPRANA | ref_camorosico={ref_camorosico} "

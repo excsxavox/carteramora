@@ -41,6 +41,8 @@ class LimpiezaPipelineHandler(PipelineHandler):
             result.asignaciones_generadas,
             result.archivo_asignacion,
         )
+        if result.archivo_acumulado_mensual:
+            logger.info("Acumulado mensual: %s", result.archivo_acumulado_mensual)
         logger.info("Salidas: %s | %s", result.archivo_detalle_morosidad, result.archivo_detalle_mora)
         contexto.resultado_limpieza = result
         return contexto

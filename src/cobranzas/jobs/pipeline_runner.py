@@ -15,6 +15,9 @@ from cobranzas.infrastructure.persistence.database import (
     init_database,
     verificar_conexion,
 )
+from cobranzas.infrastructure.persistence.sqlite_schema_migrator import (
+    migrar_sqlite_si_aplica,
+)
 from cobranzas.jobs.notificar_error import notificar_error_pipeline
 from cobranzas.jobs.runner import _configure_logging
 
@@ -44,6 +47,9 @@ def _preparar_base_datos(settings: Settings) -> None:
 
     engine = create_engine_from_settings(settings)
     init_database(engine)
+    nuevas = migrar_sqlite_si_aplica(engine)
+    if nuevas:
+        logger.info("SQLite: %s columna(s) de esquema aplicada(s)", nuevas)
     verificar_conexion(engine)
     logger.info("Base de datos lista: %s", resolver_database_url(settings))
 
@@ -91,6 +97,11 @@ def _resultado_desde_contexto(
         archivo_salida_morosidad=str(settings.archivo_salida_morosidad),
         archivo_salida_mora=str(settings.archivo_salida_mora),
         archivo_asignacion=str(settings.archivo_salida_asignacion),
+        archivo_acumulado_mensual=(
+            str(limpieza.archivo_acumulado_mensual)
+            if limpieza and limpieza.archivo_acumulado_mensual
+            else None
+        ),
         total_en_mora=limpieza.total_en_mora if limpieza else None,
         total_saldo_mora=limpieza.total_saldo_mora if limpieza else None,
         registros_persistidos_bd=limpieza.registros_persistidos_bd if limpieza else None,

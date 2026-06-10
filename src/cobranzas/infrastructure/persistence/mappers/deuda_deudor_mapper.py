@@ -50,6 +50,7 @@ class DeudaPersistencia:
     estado: str
     oficial: str
     dias_mora: Optional[int]
+    dias_atraso_camorosico: Optional[int]
     fecha_ingreso: str
     tipo: str
     dia_pago: Optional[int]
@@ -97,7 +98,8 @@ def mapear_deudor(credito: Credito) -> DeudorPersistencia:
 def mapear_deuda(
     credito: Credito, archivo_origen: str = ""
 ) -> DeudaPersistencia:
-    dias = credito.dias_mora or _int_tab(credito, "dias_mora", "dias_atraso")
+    dias_camorosico = _int_tab(credito, "dias_atraso")
+    dias_mora = credito.dias_mora if credito.dias_mora is not None else dias_camorosico
 
     total_op = _decimal_tab(credito, "total_op", "total_operacion")
     if total_op is None and credito.total_operacion:
@@ -167,7 +169,8 @@ def mapear_deuda(
             or valor_tab(credito, "nombre_oficial")
             or valor_tab(credito, "oficial")
         ),
-        dias_mora=dias,
+        dias_mora=dias_mora,
+        dias_atraso_camorosico=dias_camorosico,
         fecha_ingreso=valor_tab(credito, "fecha_ingreso"),
         tipo=valor_tab(credito, "tipo"),
         dia_pago=_int_tab(credito, "dia_pago"),

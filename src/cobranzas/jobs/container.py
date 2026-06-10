@@ -8,9 +8,13 @@ from cobranzas.application.use_cases.procesar_cobranzas import (
 from cobranzas.domain.services.asignacion_cartera_service import AsignacionCarteraService
 from cobranzas.domain.services.cobranzas_service import CobranzasService
 from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
+from cobranzas.domain.services.exportar_acumulado_mensual_service import (
+    ExportarAcumuladoMensualService,
+)
 from cobranzas.domain.services.persistir_cartera_mora_service import (
     PersistirCarteraMoraService,
 )
+from cobranzas.infrastructure.adapters.excel_acumulado_writer import ExcelAcumuladoWriter
 from cobranzas.infrastructure.adapters.recblue_archivo_adapter import RecblueArchivoAdapter
 from cobranzas.infrastructure.adapters.tsv_credito_repository import (
     TsvCreditoRepository,
@@ -25,6 +29,9 @@ from cobranzas.infrastructure.persistence.database import (
     init_database,
 )
 from cobranzas.infrastructure.persistence.repositories import SqlAlchemyCobranzaRepository
+from cobranzas.infrastructure.persistence.repositories.acumulado_mensual_repository import (
+    SqlAlchemyAcumuladoMensualRepository,
+)
 from cobranzas.infrastructure.persistence.repositories.asignacion_mensual_repository import (
     SqlAlchemyAsignacionMensualRepository,
 )
@@ -53,6 +60,7 @@ def build_procesar_cobranzas_use_case(
 ) -> ProcesarCobranzasUseCase:
     cfg = settings or Settings()
     persistir_service: Optional[PersistirCarteraMoraService] = None
+    export_acumulado_service: Optional[ExportarAcumuladoMensualService] = None
     feriados_repo = None
     reglas_resolver = None
     asignacion_service = None
@@ -79,6 +87,12 @@ def build_procesar_cobranzas_use_case(
             ),
             dias_mora_minimo=cfg.dias_mora_minimo,
         )
+        if cfg.usar_mora_temprana:
+            export_acumulado_service = ExportarAcumuladoMensualService(
+                SqlAlchemyAcumuladoMensualRepository(session_factory),
+                ExcelAcumuladoWriter(),
+                cfg.directorio_destino,
+            )
 
     if cfg.usar_mora_temprana and session_factory is not None:
         reglas_repo = SqlAlchemyReglasRepository(session_factory)
@@ -129,4 +143,5 @@ def build_procesar_cobranzas_use_case(
         asignacion_service=asignacion_service,
         recblue_adapter=recblue_adapter,
         archivo_recblue=cfg.archivo_recblue,
+        export_acumulado_service=export_acumulado_service,
     )

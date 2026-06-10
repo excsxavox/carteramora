@@ -12,6 +12,9 @@ from cobranzas.domain.services.asignacion_cartera_service import AsignacionCarte
 from cobranzas.infrastructure.adapters.recblue_archivo_adapter import RecblueArchivoAdapter
 from cobranzas.domain.services.cobranzas_service import CobranzasService
 from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
+from cobranzas.domain.services.exportar_acumulado_mensual_service import (
+    ExportarAcumuladoMensualService,
+)
 from cobranzas.domain.services.persistir_cartera_mora_service import (
     PersistirCarteraMoraService,
 )
@@ -33,6 +36,7 @@ class ProcesarCobranzasResult:
     archivo_asignacion: Path
     registros_persistidos_bd: int = 0
     asignaciones_generadas: int = 0
+    archivo_acumulado_mensual: Optional[Path] = None
 
 
 class ProcesarCobranzasUseCase:
@@ -99,6 +103,7 @@ class ProcesarCobranzasUseCase:
         asignacion_service: Optional[AsignacionCarteraService] = None,
         recblue_adapter: Optional[RecblueArchivoAdapter] = None,
         archivo_recblue: Optional[Path] = None,
+        export_acumulado_service: Optional[ExportarAcumuladoMensualService] = None,
     ) -> "ProcesarCobranzasUseCase":
         chain = build_proceso_chain(
             morosidad_repository=morosidad_repository,
@@ -112,6 +117,7 @@ class ProcesarCobranzasUseCase:
             reglas_resolver=reglas_resolver,
             asignacion_service=asignacion_service,
             recblue_adapter=recblue_adapter,
+            export_acumulado_service=export_acumulado_service,
         )
         return cls(
             proceso_chain=chain,
@@ -161,4 +167,5 @@ class ProcesarCobranzasUseCase:
             archivo_asignacion=self._archivo_asignacion,
             registros_persistidos_bd=contexto_final.registros_persistidos_bd,
             asignaciones_generadas=len(contexto_final.asignaciones),
+            archivo_acumulado_mensual=contexto_final.archivo_acumulado_mensual,
         )

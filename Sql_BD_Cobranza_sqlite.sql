@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS deuda (
     estado VARCHAR(100),
     oficial VARCHAR(200),
     dias_mora INTEGER,
+    dias_atraso_camorosico INTEGER,
     fecha_ingreso DATE,
     tipo VARCHAR(50),
     dia_pago INTEGER,

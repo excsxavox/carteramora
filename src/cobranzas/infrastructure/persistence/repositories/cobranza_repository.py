@@ -224,6 +224,7 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         deuda.estado = datos.estado or None
         deuda.oficial = datos.oficial or None
         deuda.dias_mora = datos.dias_mora
+        deuda.dias_atraso_camorosico = datos.dias_atraso_camorosico
         deuda.fecha_ingreso = _parse_fecha_tab(datos.fecha_ingreso)
         deuda.tipo = datos.tipo or None
         deuda.dia_pago = datos.dia_pago
