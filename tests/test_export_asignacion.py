@@ -84,6 +84,67 @@ def test_export_omite_asignaciones_ya_en_bd(tmp_path: Path):
     assert contenido == [{"ID_CREDITO": "200", "USUARIO": "Nuevo"}]
 
 
+def test_sin_nuevas_no_sobrescribe_csv_existente(tmp_path: Path):
+    """Re-ejecutar un día sin nuevas conserva el ASIGNACION de ese día."""
+    ruta = tmp_path / "ASIGNACION_06052026.csv"
+    ruta.write_text(
+        "ID_CREDITO,USUARIO\n100,ASESOR A\n200,ASESOR B\n",
+        encoding="utf-8-sig",
+    )
+    filas = [
+        AsignacionCredito(
+            fecha_corte=date(2026, 6, 5),
+            numero_operacion="001",
+            identificacion="x",
+            socio="1",
+            nombre="A",
+            saldo_capital=1.0,
+            dias_mora=1,
+            codigo_asesor="Z",
+            nombre_asesor="Previo",
+            id_credito_recblue="100",
+            reasignado=False,
+        ),
+    ]
+
+    ExportarAsignacionService().exportar_csv(ruta, filas)
+
+    with ruta.open(encoding="utf-8-sig", newline="") as fh:
+        contenido = list(csv.DictReader(fh))
+
+    assert len(contenido) == 2
+    assert contenido[0]["ID_CREDITO"] == "100"
+
+
+def test_dia_distinto_no_toca_archivo_otro_dia(tmp_path: Path):
+    dia5 = tmp_path / "ASIGNACION_06052026.csv"
+    dia6 = tmp_path / "ASIGNACION_06062026.csv"
+    dia5.write_text("ID_CREDITO,USUARIO\n100,ASESOR A\n", encoding="utf-8-sig")
+
+    ExportarAsignacionService().exportar_csv(
+        dia6,
+        [
+            AsignacionCredito(
+                fecha_corte=date(2026, 6, 6),
+                numero_operacion="002",
+                identificacion="y",
+                socio="2",
+                nombre="B",
+                saldo_capital=1.0,
+                dias_mora=1,
+                codigo_asesor="N",
+                nombre_asesor="Nuevo",
+                id_credito_recblue="200",
+                reasignado=False,
+            ),
+        ],
+    )
+
+    assert not dia6.exists()
+    with dia5.open(encoding="utf-8-sig", newline="") as fh:
+        assert len(list(csv.DictReader(fh))) == 1
+
+
 def test_export_usa_mapa_recblue_post_enriquecimiento(tmp_path: Path):
     ruta = tmp_path / "ASIGNACION.csv"
     filas = [
