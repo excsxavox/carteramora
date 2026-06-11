@@ -12,11 +12,13 @@ from typing import List, Optional, Sequence
 
 from cobranzas.domain.models.credito import Credito
 from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
-from cobranzas.domain.services.dias_habiles_service import calcular_cuota_mora
+from cobranzas.domain.services.dias_habiles_service import (
+    calcular_cuota_mora,
+    dias_max_mora_temprana_efectivo,
+)
 from cobranzas.domain.services.mora_temprana_service import (
     MoraTempranaService,
-    _cuota_mes_anterior_impaga,
-    _mora_madura_acumulada_camorosico,
+    _mora_cruza_mes_cuota,
     debe_excluir_operacion,
     dia_pago_desde_credito,
     dias_atraso_camorosico,
@@ -249,25 +251,25 @@ def ejecutar_seguimiento(
             print(f"  ultimo_pago (CADETACACO)   : {ultimo_pago}")
         if cuota.clasificacion == "al_dia":
             print("\n  -> AL DIA (cuota del período sin vencimiento impago).")
-        elif mes_cuota != mes_corte:
-            print("\n  -> MORA MADURA (cuota no es del período actual).")
-        elif _cuota_mes_anterior_impaga(
-            credito.fecha_corte, dia_pago, feriados, ultimo_pago
-        ):
-            print("\n  -> MORA MADURA (períodos anteriores impagos).")
-        elif _mora_madura_acumulada_camorosico(
-            dias_atraso, cuota.dias, reglas.dias_max
-        ):
-            print(
-                f"\n  -> MORA MADURA (CAMOROSICO {dias_atraso} acumulado, "
-                f"días hábiles={cuota.dias})."
-            )
+        elif _mora_cruza_mes_cuota(mes_cuota, mes_corte):
+            print("\n  -> MORA MADURA (cuota cruza al mes siguiente).")
         elif cuota.dias < reglas.dias_min:
             print("\n  -> FUERA DE RANGO (días hábiles por debajo del mínimo).")
-        elif cuota.dias > reglas.dias_max:
-            print("\n  -> FUERA DE RANGO (días hábiles por encima del máximo).")
         else:
-            print("\n  -> ELEGIBLE mora temprana (iría a asignación)")
+            plazo_max = dias_max_mora_temprana_efectivo(
+                cuota.vencimiento_efectivo,
+                cuota.anio_cuota,
+                cuota.mes_cuota,
+                dia_pago,
+                feriados,
+                reglas.dias_max,
+            )
+            if plazo_max <= 0 or cuota.dias > plazo_max:
+                print(
+                    f"\n  -> FUERA DE RANGO (días hábiles > plazo cuota={plazo_max})."
+                )
+            else:
+                print("\n  -> ELEGIBLE mora temprana (iría a asignación)")
 
     # --- Simulación pipeline ---
     servicio = MoraTempranaService()

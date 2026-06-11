@@ -31,7 +31,12 @@ def test_excluye_castigado():
 def test_filtra_por_dias_habiles_dia_pago():
     servicio = MoraTempranaService()
     creditos = [
-        _credito(id_credito="A", dias_mora=99, campos_tab=(("dia_pago", "1"),)),
+        _credito(
+            id_credito="A",
+            fecha_corte=date(2026, 6, 1),
+            dias_mora=99,
+            campos_tab=(("dia_pago", "1"),),
+        ),
         _credito(
             id_credito="B",
             dias_mora=1,
@@ -92,30 +97,45 @@ def test_camorosico_3_con_un_dia_habil_entra():
     assert len(elegibles) == 1
 
 
-def test_34_dias_camorosico_no_entra_mora_temprana():
+def test_ref_camorosico_alto_mismo_mes_sigue_temprana_con_max_calculado():
+    """CAMOROSICO en calendario no cambia mora temprana si la cuota es del mes de corte."""
     servicio = MoraTempranaService()
     credito = _credito(
         id_credito="0018521943",
-        fecha_corte=date(2026, 5, 6),
+        fecha_corte=date(2026, 5, 20),
         dias_mora=34,
-        campos_tab=(
-            ("dia_pago", "5"),
-            ("fecha_ultimo_pago", "06/01/2026"),
-        ),
+        campos_tab=(("dia_pago", "5"),),
     )
-    elegibles, metricas = servicio.procesar(
+    elegibles, _ = servicio.procesar(
         [credito],
         feriados=set(),
         dias_min=1,
-        dias_max=1,
+        dias_max=0,
         estados_excluidos=(),
         tipos_oper_excluidos=(),
     )
-    assert len(elegibles) == 0
-    assert (
-        metricas["mora_madura_periodos_anteriores"] == 1
-        or metricas["mora_madura_acumulada"] == 1
+    assert len(elegibles) == 1
+    assert elegibles[0].dias_mora > 1
+
+
+def test_junio_5_dia_pago_2_ref_camorosico_6_entra_temprana():
+    servicio = MoraTempranaService()
+    credito = _credito(
+        id_credito="0018218948",
+        fecha_corte=date(2026, 6, 5),
+        dias_mora=6,
+        campos_tab=(("dia_pago", "2"),),
     )
+    elegibles, _ = servicio.procesar(
+        [credito],
+        feriados=set(),
+        dias_min=1,
+        dias_max=0,
+        estados_excluidos=(),
+        tipos_oper_excluidos=(),
+    )
+    assert len(elegibles) == 1
+    assert elegibles[0].dias_mora == 3
 
 
 def test_varios_dias_dentro_plazo_cuota_entra_temprana():

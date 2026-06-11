@@ -10,10 +10,17 @@ from cobranzas.domain.models.credito import Credito
 from cobranzas.domain.ports.asignacion_mensual_port import AsignacionMensualPort
 from cobranzas.domain.ports.asesores_rotacion_port import AsesoresRotacionPort
 from cobranzas.domain.ports.recblue_port import RecbluePort
-from cobranzas.domain.services.asignacion_calendario import debe_asignar_asesores
+from cobranzas.domain.services.asignacion_calendario import (
+    debe_asignar_asesores,
+    debe_reasignacion_completa_mes,
+)
 from cobranzas.domain.services.mora_temprana_service import saldo_capital_desde_credito
 
 logger = logging.getLogger("cobranzas.asignacion")
+
+
+def _normalizar_operacion(numero: str) -> str:
+    return (numero or "").strip()
 
 
 class AsignacionCarteraService:
@@ -55,29 +62,38 @@ class AsignacionCarteraService:
             return list(creditos), []
 
         rotacion = self._cargar_rotacion()
-        existentes = self._cargar_asignaciones_mes(fecha_corte)
-        if existentes:
+        reasignacion_completa = debe_reasignacion_completa_mes(fecha_corte)
+        if reasignacion_completa:
+            existentes: Dict[str, Tuple[str, str]] = {}
             logger.info(
-                "Asignación | mes %04d-%02d | ya asignadas en BD=%s (se conservan)",
+                "Asignación | mes %04d-%02d | día 1 | reasignación completa (sin consultar BD)",
                 fecha_corte.year,
                 fecha_corte.month,
-                len(existentes),
             )
         else:
-            logger.info(
-                "Asignación | mes %04d-%02d | sin asignaciones previas | rotación nueva",
-                fecha_corte.year,
-                fecha_corte.month,
-            )
+            existentes = self._cargar_asignaciones_mes(fecha_corte)
+            if existentes:
+                logger.info(
+                    "Asignación | mes %04d-%02d | ya asignadas en BD=%s (se conservan)",
+                    fecha_corte.year,
+                    fecha_corte.month,
+                    len(existentes),
+                )
+            else:
+                logger.info(
+                    "Asignación | mes %04d-%02d | sin asignaciones previas | rotación nueva",
+                    fecha_corte.year,
+                    fecha_corte.month,
+                )
         ids_recblue = self._recblue.id_credito_por_operacion() if self._recblue else {}
 
         creditos_asignados: List[Credito] = []
         filas: List[AsignacionCredito] = []
-        indice_rotacion = 0
+        indice_rotacion = len(existentes) % len(rotacion) if rotacion else 0
 
         for credito in creditos:
             saldo = saldo_capital_desde_credito(credito)
-            numero = credito.id_credito
+            numero = _normalizar_operacion(credito.id_credito)
 
             if numero in existentes:
                 codigo, nombre = existentes[numero]
@@ -126,6 +142,11 @@ class AsignacionCarteraService:
     def _cargar_asignaciones_mes(self, fecha_corte: date) -> Dict[str, Tuple[str, str]]:
         if self._asignacion_mensual is None:
             return {}
-        return self._asignacion_mensual.asignaciones_del_mes(
+        crudo = self._asignacion_mensual.asignaciones_del_mes(
             fecha_corte.year, fecha_corte.month
         )
+        return {
+            _normalizar_operacion(numero): asesor
+            for numero, asesor in crudo.items()
+            if _normalizar_operacion(numero)
+        }

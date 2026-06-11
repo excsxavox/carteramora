@@ -20,6 +20,7 @@ def test_export_asignacion_solo_id_credito_y_usuario(tmp_path: Path):
             codigo_asesor="LMANOSALVAS",
             nombre_asesor="LUIS MANOSALVAS",
             id_credito_recblue="103102",
+            reasignado=True,
         ),
         AsignacionCredito(
             fecha_corte=date(2026, 5, 5),
@@ -44,6 +45,45 @@ def test_export_asignacion_solo_id_credito_y_usuario(tmp_path: Path):
     assert contenido == [{"ID_CREDITO": "103102", "USUARIO": "LUIS MANOSALVAS"}]
 
 
+def test_export_omite_asignaciones_ya_en_bd(tmp_path: Path):
+    ruta = tmp_path / "ASIGNACION.csv"
+    filas = [
+        AsignacionCredito(
+            fecha_corte=date(2026, 6, 4),
+            numero_operacion="001",
+            identificacion="x",
+            socio="1",
+            nombre="A",
+            saldo_capital=1.0,
+            dias_mora=1,
+            codigo_asesor="Z",
+            nombre_asesor="Previo",
+            id_credito_recblue="100",
+            reasignado=False,
+        ),
+        AsignacionCredito(
+            fecha_corte=date(2026, 6, 4),
+            numero_operacion="002",
+            identificacion="y",
+            socio="2",
+            nombre="B",
+            saldo_capital=1.0,
+            dias_mora=1,
+            codigo_asesor="N",
+            nombre_asesor="Nuevo",
+            id_credito_recblue="200",
+            reasignado=True,
+        ),
+    ]
+
+    ExportarAsignacionService().exportar_csv(ruta, filas)
+
+    with ruta.open(encoding="utf-8-sig", newline="") as fh:
+        contenido = list(csv.DictReader(fh))
+
+    assert contenido == [{"ID_CREDITO": "200", "USUARIO": "Nuevo"}]
+
+
 def test_export_usa_mapa_recblue_post_enriquecimiento(tmp_path: Path):
     ruta = tmp_path / "ASIGNACION.csv"
     filas = [
@@ -58,6 +98,7 @@ def test_export_usa_mapa_recblue_post_enriquecimiento(tmp_path: Path):
             codigo_asesor="MARCOS",
             nombre_asesor="MARCOS PEREZ",
             id_credito_recblue="",
+            reasignado=True,
         ),
     ]
     mapa = {"0060058778": "97629"}

@@ -6,15 +6,14 @@ from sqlalchemy.orm import sessionmaker
 from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
 from cobranzas.domain.services.dias_habiles_service import (
     calcular_cuota_mora,
+    dias_max_mora_temprana_efectivo,
     vencimiento_efectivo,
 )
 from cobranzas.domain.services.mora_temprana_service import (
-    _cuota_mes_anterior_impaga,
-    _mora_madura_acumulada_camorosico,
+    _mora_cruza_mes_cuota,
     debe_excluir_operacion,
     dia_pago_desde_credito,
     dias_atraso_camorosico,
-    fecha_ultimo_pago_desde_credito,
 )
 from cobranzas.infrastructure.adapters.cuadro_morosidad_parser import (
     leer_cuadro_morosidad,
@@ -65,7 +64,6 @@ def analizar(fecha: str) -> dict:
         if dia_pago <= 0:
             buckets["sin_dia_pago"] += 1
             continue
-        ultimo_pago = fecha_ultimo_pago_desde_credito(credito)
         cuota = calcular_cuota_mora(fc, dia_pago, feriados, ultimo_pago=None)
         mes_corte = f"{fc.year:04d}-{fc.month:02d}"
         mes_cuota = f"{cuota.anio_cuota:04d}-{cuota.mes_cuota:02d}"
@@ -77,25 +75,21 @@ def analizar(fecha: str) -> dict:
             else:
                 buckets["al_dia_otro"] += 1
             continue
-        if mes_cuota != mes_corte:
-            buckets["madura_mes_anterior"] += 1
+        if _mora_cruza_mes_cuota(mes_cuota, mes_corte):
+            buckets["madura_cruce_mes"] += 1
             continue
-        if _cuota_mes_anterior_impaga(fc, dia_pago, feriados, ultimo_pago):
-            buckets["madura_periodos"] += 1
-            continue
-        if _mora_madura_acumulada_camorosico(ref, cuota.dias, dias_max):
-            buckets["madura_acum"] += 1
-            if cuota.dias == 1 and len(ejemplos_acum_d1) < 5:
-                ejemplos_acum_d1.append(
-                    f"{credito.id_credito} ref={ref} dp={dia_pago}"
-                )
-            if cuota.dias == 1:
-                buckets["madura_acum_dias1"] += 1
-            continue
+        plazo_max = dias_max_mora_temprana_efectivo(
+            cuota.vencimiento_efectivo,
+            cuota.anio_cuota,
+            cuota.mes_cuota,
+            dia_pago,
+            feriados,
+            dias_max,
+        )
         if cuota.dias < dias_min:
             buckets["fuera_bajo"] += 1
             continue
-        if cuota.dias > dias_max:
+        if plazo_max <= 0 or cuota.dias > plazo_max:
             buckets["fuera_alto"] += 1
             if ref <= 3 and len(ejemplos_fuera_ref_bajo) < 5:
                 ejemplos_fuera_ref_bajo.append(

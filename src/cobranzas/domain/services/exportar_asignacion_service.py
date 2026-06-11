@@ -16,20 +16,27 @@ class ExportarAsignacionService:
         ruta: Path,
         asignaciones: List[AsignacionCredito],
         ids_recblue_por_operacion: Optional[Dict[str, str]] = None,
+        solo_nuevas: bool = True,
     ) -> None:
         """
         Entregable: ID_CREDITO (export Recblue) + USUARIO (nombre asesor en BD).
+
+        Por defecto solo exporta asignaciones nuevas del día (reasignado=True).
         Omite filas sin ID Crédito en Recblue.
         """
         ruta.parent.mkdir(parents=True, exist_ok=True)
         mapa = ids_recblue_por_operacion or {}
         exportadas = 0
         omitidas = 0
+        conservadas = 0
 
         with ruta.open("w", encoding="utf-8-sig", newline="") as fh:
             writer = csv.DictWriter(fh, fieldnames=COLUMNAS_CSV)
             writer.writeheader()
             for fila in asignaciones:
+                if solo_nuevas and not fila.reasignado:
+                    conservadas += 1
+                    continue
                 id_credito = (
                     mapa.get(fila.numero_operacion) or fila.id_credito_recblue or ""
                 ).strip()
@@ -50,8 +57,9 @@ class ExportarAsignacionService:
                 omitidas,
             )
         logger.info(
-            "ASIGNACION.csv generado: %s (%s filas, %s omitidas)",
+            "ASIGNACION.csv generado: %s (%s nuevas, %s conservadas BD, %s sin Recblue)",
             ruta,
             exportadas,
+            conservadas,
             omitidas,
         )

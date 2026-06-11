@@ -26,6 +26,7 @@ def _contexto(fecha: date, con_asignacion: bool = True) -> ProcesoContext:
                 dias_mora=1,
                 codigo_asesor="A",
                 nombre_asesor="Asesor A",
+                reasignado=True,
             )
         ]
     return ctx

@@ -111,11 +111,7 @@ def build_procesar_cobranzas_use_case(
         feriados_repo = SqlAlchemyFeriadosCalendarioRepository(
             session_factory, cfg.clave_feriados
         )
-        asignacion_mensual = (
-            SqlAlchemyAsignacionMensualRepository(session_factory)
-            if cfg.persistir_en_bd
-            else None
-        )
+        asignacion_mensual = SqlAlchemyAsignacionMensualRepository(session_factory)
         asignacion_service = AsignacionCarteraService(
             asesores_rotacion=SqlAlchemyAsesoresRotacionRepository(session_factory),
             asignacion_mensual=asignacion_mensual,

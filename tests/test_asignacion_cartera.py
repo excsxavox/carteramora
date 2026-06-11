@@ -55,6 +55,23 @@ def test_ultimo_dia_mes_sin_asignacion_solo_historial():
     assert not out[0].nombre_oficial
 
 
+def test_primer_dia_mes_reasigna_aunque_bd_tenga_mes_actual():
+    """Día 1 del mes: reasignación completa; ignora asignaciones del mes en BD."""
+    servicio = AsignacionCarteraService(
+        asesores_rotacion=_RotacionFija([("A", "Asesor A"), ("B", "Asesor B")]),
+        asignacion_mensual=_MesFijo(
+            {(2026, 6): {"001": ("Z", "Junio previo"), "002": ("Z", "Junio previo")}},
+        ),
+    )
+    creditos = [
+        Credito("001", "C1", 100.0, 1, date(2026, 6, 1)),
+        Credito("002", "C2", 90.0, 1, date(2026, 6, 1)),
+    ]
+    _, filas = servicio.asignar(creditos, date(2026, 6, 1))
+    assert [f.codigo_asesor for f in filas] == ["A", "B"]
+    assert all(f.reasignado for f in filas)
+
+
 def test_mes_nuevo_sin_asignaciones_previas_rota_todos():
     """Primer corte de julio: BD sin julio → asignación nueva para todos."""
     servicio = AsignacionCarteraService(
@@ -87,7 +104,7 @@ def test_mismo_mes_segunda_consulta_mantiene_asesor():
     _, filas = servicio.asignar(creditos, date(2026, 7, 6))
     assert filas[0].codigo_asesor == "Z"
     assert filas[0].reasignado is False
-    assert filas[1].codigo_asesor == "A"
+    assert filas[1].codigo_asesor == "B"
     assert filas[1].reasignado is True
 
 
@@ -103,8 +120,30 @@ def test_dia_intermedio_mantiene_asignacion_del_mes():
     _, filas = servicio.asignar(creditos, date(2026, 4, 3))
     assert filas[0].codigo_asesor == "Z"
     assert filas[0].reasignado is False
-    assert filas[1].codigo_asesor == "A"
+    assert filas[1].codigo_asesor == "B"
     assert filas[1].reasignado is True
+
+
+def test_dia_anterior_tras_dia_posterior_cero_nuevas():
+    """Día 5 asigna; re-ejecutar día 4 → 0 nuevas (comparar con BD del mes)."""
+    servicio = AsignacionCarteraService(
+        asesores_rotacion=_RotacionFija([("A", "Asesor A"), ("B", "Asesor B")]),
+        asignacion_mensual=_MesFijo(
+            {
+                (2026, 6): {
+                    "001": ("A", "Junio 5"),
+                    "002": ("B", "Junio 5"),
+                }
+            },
+        ),
+    )
+    creditos = [
+        Credito("001", "C1", 100.0, 1, date(2026, 6, 4)),
+        Credito("002", "C2", 90.0, 1, date(2026, 6, 4)),
+    ]
+    _, filas = servicio.asignar(creditos, date(2026, 6, 4))
+    assert all(not f.reasignado for f in filas)
+    assert [f.codigo_asesor for f in filas] == ["A", "B"]
 
 
 def test_falla_si_no_hay_asesores_activos_en_bd():

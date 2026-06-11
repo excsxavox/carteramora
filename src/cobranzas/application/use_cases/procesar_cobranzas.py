@@ -166,6 +166,8 @@ class ProcesarCobranzasUseCase:
             archivo_detalle_mora=self._archivo_detalle_mora,
             archivo_asignacion=self._archivo_asignacion,
             registros_persistidos_bd=contexto_final.registros_persistidos_bd,
-            asignaciones_generadas=len(contexto_final.asignaciones),
+            asignaciones_generadas=sum(
+                1 for fila in contexto_final.asignaciones if fila.reasignado
+            ),
             archivo_acumulado_mensual=contexto_final.archivo_acumulado_mensual,
         )

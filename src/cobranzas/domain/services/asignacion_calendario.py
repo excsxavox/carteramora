@@ -4,6 +4,11 @@ from calendar import monthrange
 from datetime import date
 
 
+def es_primer_dia_mes(fecha_corte: date) -> bool:
+    """True si es el día 1 del mes (ej. 06012026 en Postman = 01/06/2026)."""
+    return fecha_corte.day == 1
+
+
 def es_ultimo_dia_mes(fecha_corte: date) -> bool:
     """True si la fecha es el último día calendario del mes (ej. 30/06/2026)."""
     return fecha_corte.day == monthrange(fecha_corte.year, fecha_corte.month)[1]
@@ -17,6 +22,16 @@ def es_dia_solo_historial(fecha_corte: date) -> bool:
     La reasignación al cambiar de mes la resuelve asignaciones_del_mes(año, mes).
     """
     return es_ultimo_dia_mes(fecha_corte)
+
+
+def debe_reasignacion_completa_mes(fecha_corte: date) -> bool:
+    """
+    Solo el día 1 del mes se rota toda la cartera elegible.
+
+    Los demás días hábiles del mes conservan el asesor ya persistido en BD
+    y solo asignan operaciones nuevas.
+    """
+    return es_primer_dia_mes(fecha_corte)
 
 
 def debe_asignar_asesores(fecha_corte: date) -> bool:
