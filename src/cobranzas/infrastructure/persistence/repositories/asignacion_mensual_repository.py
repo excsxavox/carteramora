@@ -1,6 +1,6 @@
 from typing import Dict, Tuple
 
-from sqlalchemy import and_, extract, or_, select
+from sqlalchemy import extract, select
 from sqlalchemy.orm import sessionmaker
 
 from cobranzas.domain.ports.asignacion_mensual_port import AsignacionMensualPort
@@ -17,10 +17,10 @@ class SqlAlchemyAsignacionMensualRepository(AsignacionMensualPort):
 
     def asignaciones_del_mes(self, anio: int, mes: int) -> Dict[str, Tuple[str, str]]:
         """
-        Operaciones con asesor de mora temprana ya registradas en el mes.
+        Operaciones ya asignadas a mora temprana en el mes calendario.
 
-        Usa la asignación más reciente por operación (fecha_asignacion desc).
-        Incluye cortes del mes aunque fecha_asignacion no se haya actualizado aún.
+        Criterio: asesores_deuda con estado MORA_TEMPRANA y fecha_asignacion
+        en (anio, mes). Día 2+ del mes solo rota las que no aparecen aquí.
         """
         resultado: Dict[str, Tuple[str, str]] = {}
         with self._session_factory() as session:
@@ -36,16 +36,8 @@ class SqlAlchemyAsignacionMensualRepository(AsignacionMensualPort):
                     Deuda.numero_operacion.isnot(None),
                     AsesorDeuda.id_asesor.isnot(None),
                     AsesorDeuda.estado == ESTADO_ASESOR_MORA_TEMPRANA,
-                    or_(
-                        and_(
-                            extract("year", AsesorDeuda.fecha_asignacion) == anio,
-                            extract("month", AsesorDeuda.fecha_asignacion) == mes,
-                        ),
-                        and_(
-                            extract("year", Deuda.fecha_corte) == anio,
-                            extract("month", Deuda.fecha_corte) == mes,
-                        ),
-                    ),
+                    extract("year", AsesorDeuda.fecha_asignacion) == anio,
+                    extract("month", AsesorDeuda.fecha_asignacion) == mes,
                 )
                 .order_by(
                     AsesorDeuda.fecha_asignacion.desc(),

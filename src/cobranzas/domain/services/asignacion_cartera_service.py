@@ -66,25 +66,17 @@ class AsignacionCarteraService:
         if reasignacion_completa:
             existentes: Dict[str, Tuple[str, str]] = {}
             logger.info(
-                "Asignación | mes %04d-%02d | día 1 | reasignación completa (sin consultar BD)",
-                fecha_corte.year,
-                fecha_corte.month,
+                "Asignación | %s | día 1 del mes | reasignación completa con archivo del corte",
+                fecha_corte.isoformat(),
             )
         else:
             existentes = self._cargar_asignaciones_mes(fecha_corte)
-            if existentes:
-                logger.info(
-                    "Asignación | mes %04d-%02d | ya asignadas en BD=%s (se conservan)",
-                    fecha_corte.year,
-                    fecha_corte.month,
-                    len(existentes),
-                )
-            else:
-                logger.info(
-                    "Asignación | mes %04d-%02d | sin asignaciones previas | rotación nueva",
-                    fecha_corte.year,
-                    fecha_corte.month,
-                )
+            logger.info(
+                "Asignación | %s | día %s | solo nuevos en mora temprana | asignadas en mes=%s",
+                fecha_corte.isoformat(),
+                fecha_corte.day,
+                len(existentes),
+            )
         ids_recblue = self._recblue.id_credito_por_operacion() if self._recblue else {}
 
         creditos_asignados: List[Credito] = []
@@ -131,11 +123,14 @@ class AsignacionCarteraService:
                 )
             )
 
+        nuevas = sum(1 for f in filas if f.reasignado)
+        conservadas = len(filas) - nuevas
         logger.info(
-            "Asignación | operaciones=%s asesores_rotacion=%s nuevas=%s",
+            "Asignación | pool_mora_temprana=%s | conservadas_mes=%s | nuevas=%s | asesores=%s",
             len(filas),
+            conservadas,
+            nuevas,
             len(rotacion),
-            sum(1 for f in filas if f.reasignado),
         )
         return creditos_asignados, filas
 

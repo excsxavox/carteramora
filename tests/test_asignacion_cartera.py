@@ -124,6 +124,25 @@ def test_dia_intermedio_mantiene_asignacion_del_mes():
     assert filas[1].reasignado is True
 
 
+def test_dia_2_solo_asigna_nuevos_en_mora_temprana():
+    """Día 2+: conserva mes en BD; solo rota operaciones nuevas elegibles."""
+    servicio = AsignacionCarteraService(
+        asesores_rotacion=_RotacionFija([("A", "Asesor A"), ("B", "Asesor B")]),
+        asignacion_mensual=_MesFijo(
+            {(2026, 6): {"001": ("Z", "Día 1")}},
+        ),
+    )
+    creditos = [
+        Credito("001", "C1", 100.0, 1, date(2026, 6, 2)),
+        Credito("002", "C2", 90.0, 1, date(2026, 6, 2)),
+    ]
+    _, filas = servicio.asignar(creditos, date(2026, 6, 2))
+    assert filas[0].codigo_asesor == "Z"
+    assert not filas[0].reasignado
+    assert filas[1].codigo_asesor == "B"
+    assert filas[1].reasignado
+
+
 def test_dia_anterior_tras_dia_posterior_cero_nuevas():
     """Día 5 asigna; re-ejecutar día 4 → 0 nuevas (comparar con BD del mes)."""
     servicio = AsignacionCarteraService(

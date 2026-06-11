@@ -9,6 +9,6 @@ class AsignacionMensualPort(ABC):
         self, anio: int, mes: int
     ) -> Dict[str, Tuple[str, str]]:
         """
-        Devuelve mapa numero_operacion -> (codigo_asesor, nombre_asesor)
-        para asignaciones ya registradas en el mes.
+        Mapa numero_operacion -> (codigo_asesor, nombre_asesor) ya asignados
+        en el mes calendario (mora temprana). Días 2+ solo rotan los que faltan.
         """
