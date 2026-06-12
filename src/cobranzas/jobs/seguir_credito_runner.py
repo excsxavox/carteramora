@@ -15,12 +15,13 @@ from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
 from cobranzas.domain.services.dias_habiles_service import (
     calcular_cuota_mora,
     dias_max_mora_temprana_efectivo,
+    fecha_consulta_mora,
 )
 from cobranzas.domain.services.mora_temprana_service import (
     MoraTempranaService,
-    _mora_cruza_mes_cuota,
     debe_excluir_operacion,
     dia_pago_desde_credito,
+    cuotas_atraso_camorosico,
     dias_atraso_camorosico,
     fecha_ultimo_pago_desde_credito,
 )
@@ -81,6 +82,9 @@ def _imprimir_credito(etiqueta: str, credito: Credito) -> None:
     print(f"    estado         : {credito.estado_operacion}")
     print(f"    tipo oper      : {credito.tipo_operacion}")
     print(f"    dias_atraso CAMOROSICO (S): {credito.dias_mora}")
+    cuotas_atr = cuotas_atraso_camorosico(credito)
+    if cuotas_atr or credito.valor_campo("cuotas_atr"):
+        print(f"    cuotas_atr CAMOROSICO (R): {cuotas_atr}")
     print(f"    saldo          : {credito.saldo_pendiente}")
     print(f"    dia_pago (AG)  : {dia_pago_desde_credito(credito) or '-'}")
     fup = (
@@ -222,9 +226,15 @@ def ejecutar_seguimiento(
 
     dias_atraso = dias_atraso_camorosico(credito)
     dia_pago = dia_pago_desde_credito(credito)
-    ultimo_pago = fecha_ultimo_pago_desde_credito(credito)
+    fecha_consulta = fecha_consulta_mora(credito.fecha_corte, feriados)
+    ultimo_pago = fecha_ultimo_pago_desde_credito(
+        credito, fecha_limite=fecha_consulta
+    )
     print("\n[Mora] Reglas (HU-GRC-01)")
+    print(f"  fecha archivo (corte)      : {credito.fecha_corte}")
+    print(f"  fecha consulta efectiva    : {fecha_consulta}")
     print(f"  DIAS ATRASO (CAMOROSICO)   : {dias_atraso}")
+    print(f"  CUOTAS ATR. (CAMOROSICO)   : {cuotas_atraso_camorosico(credito)}")
     print(
         f"  rango temprana             : {reglas.dias_min}-{reglas.dias_max} "
         "días hábiles (DIA PAGO + feriados)"
@@ -236,7 +246,7 @@ def ejecutar_seguimiento(
         print("\n  -> NO elegible (se requiere DIA PAGO).")
     else:
         cuota = calcular_cuota_mora(
-            credito.fecha_corte, dia_pago, feriados, ultimo_pago=None
+            fecha_consulta, dia_pago, feriados, ultimo_pago=ultimo_pago
         )
         mes_cuota = f"{cuota.anio_cuota:04d}-{cuota.mes_cuota:02d}"
         mes_corte = (
@@ -247,12 +257,22 @@ def ejecutar_seguimiento(
         print(f"  vencimiento_efectivo       : {cuota.vencimiento_efectivo}")
         print(f"  mes_cuota                  : {mes_cuota}")
         print(f"  mes_corte                  : {mes_corte}")
+        print(f"  clasificacion              : {cuota.clasificacion}")
+        print(f"  cuotas_vencidas_impagas    : {cuota.cuotas_vencidas_impagas}")
         if ultimo_pago:
             print(f"  ultimo_pago (CADETACACO)   : {ultimo_pago}")
         if cuota.clasificacion == "al_dia":
-            print("\n  -> AL DIA (cuota del período sin vencimiento impago).")
-        elif _mora_cruza_mes_cuota(mes_cuota, mes_corte):
-            print("\n  -> MORA MADURA (cuota cruza al mes siguiente).")
+            print("\n  -> AL DIA (sin cuota impaga al corte).")
+        elif cuota.clasificacion == "mora_madura":
+            print(
+                "\n  -> MORA MADURA (2+ cuotas vencidas impagas; "
+                "no asignación temprana)."
+            )
+        elif cuotas_atraso_camorosico(credito) != 1:
+            print(
+                "\n  -> NO elegible (CUOTAS ATR. CAMOROSICO debe ser 1 para "
+                "mora temprana)."
+            )
         elif cuota.dias < reglas.dias_min:
             print("\n  -> FUERA DE RANGO (días hábiles por debajo del mínimo).")
         else:

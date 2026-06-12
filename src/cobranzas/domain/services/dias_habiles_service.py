@@ -17,6 +17,7 @@ class CuotaMoraCalculada:
     anio_cuota: int
     mes_cuota: int
     clasificacion: ClasificacionCuota
+    cuotas_vencidas_impagas: int = 0
 
 
 def es_fin_de_semana(fecha: date) -> bool:
@@ -37,6 +38,16 @@ def siguiente_dia_habil(fecha: date, feriados: Set[date]) -> date:
     while not es_dia_habil(actual, feriados):
         actual += timedelta(days=1)
     return actual
+
+
+def fecha_consulta_mora(fecha_archivo: date, feriados: Set[date]) -> date:
+    """
+    Fecha efectiva para aplicar reglas de mora.
+
+    El lote se nombra con la fecha del archivo, pero la consulta al core ocurre
+    al día siguiente (día hábil). Ej.: archivo viernes 5-jun → consulta lunes 8-jun.
+    """
+    return siguiente_dia_habil(fecha_archivo + timedelta(days=1), feriados)
 
 
 def contar_dias_mora_habiles(
@@ -61,14 +72,16 @@ def contar_dias_mora_habiles(
 
 
 def parse_fecha_cadetacaco(valor: str) -> Optional[date]:
-    """Fechas del core en CADETACACO (dd/mm/aaaa)."""
-    texto = (valor or "").strip()
+    """Fechas del core en CADETACACO (mm/dd/aaaa o dd/mm/aaaa)."""
+    texto = (valor or "").strip()[:10]
     if not texto:
         return None
-    try:
-        return datetime.strptime(texto, "%d/%m/%Y").date()
-    except ValueError:
-        return None
+    for fmt in ("%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(texto, fmt).date()
+        except ValueError:
+            continue
+    return None
 
 
 def fecha_pago_nominal(anio: int, mes: int, dia_pago: int) -> date:
@@ -102,22 +115,16 @@ def max_dias_mora_periodo_cuota(
     feriados: Set[date],
 ) -> int:
     """
-    Máximo de días hábiles de mora temprana dentro del plazo de la cuota.
+    Tope de mora temprana mientras solo hay una cuota vencida impaga.
 
-    El plazo va desde el día posterior al vencimiento efectivo de la cuota
-    hasta el fin del mes calendario de la cuota (28/29/30/31 según mes) o el día
-    anterior al siguiente vencimiento (lo que ocurra antes). Si la mora cruza al
-    mes siguiente con la misma cuota, deja de ser temprana (mes_cuota vs mes_corte).
+    El plazo llega hasta el vencimiento efectivo de la cuota siguiente (inclusive),
+    día en que aún cuenta como una sola cuota estrictamente vencida.
     """
-    ultimo_dia_mes = date(
-        anio_cuota, mes_cuota, monthrange(anio_cuota, mes_cuota)[1]
-    )
     anio_sig, mes_sig = _mes_siguiente(anio_cuota, mes_cuota)
     venc_siguiente = vencimiento_efectivo(anio_sig, mes_sig, dia_pago, feriados)
-    fin_plazo = min(ultimo_dia_mes, venc_siguiente - timedelta(days=1))
-    if fin_plazo <= vencimiento:
+    if venc_siguiente <= vencimiento:
         return 0
-    return contar_dias_mora_habiles(vencimiento, fin_plazo, feriados)
+    return contar_dias_mora_habiles(vencimiento, venc_siguiente, feriados)
 
 
 def dias_max_mora_temprana_efectivo(
@@ -142,6 +149,15 @@ def dias_max_mora_temprana_efectivo(
     return min(dias_max_config, tope_periodo)
 
 
+def ultimo_pago_vigente_al_corte(
+    ultimo_pago: Optional[date], fecha_corte: date
+) -> Optional[date]:
+    """Ignora abonos registrados después de la fecha de consulta."""
+    if ultimo_pago is None or ultimo_pago > fecha_corte:
+        return None
+    return ultimo_pago
+
+
 def cuota_consta_pagada(
     vencimiento: date,
     ultimo_pago: Optional[date],
@@ -157,16 +173,15 @@ def cuota_consta_pagada(
       no cancela mora al corte del día siguiente).
     - Meses anteriores: basta ultimo_pago >= vencimiento (abono tardío válido).
     """
-    if ultimo_pago is None:
-        return False
-    if ultimo_pago > fecha_corte:
+    pago = ultimo_pago_vigente_al_corte(ultimo_pago, fecha_corte)
+    if pago is None:
         return False
     mes_consulta = (fecha_corte.year, fecha_corte.month)
     if (anio_cuota, mes_cuota) == mes_consulta:
-        if ultimo_pago.year != anio_cuota or ultimo_pago.month != mes_cuota:
+        if pago.year != anio_cuota or pago.month != mes_cuota:
             return False
-        return ultimo_pago > vencimiento
-    return ultimo_pago >= vencimiento
+        return pago > vencimiento
+    return pago >= vencimiento
 
 
 def cuota_impaga_al_corte(
@@ -179,16 +194,42 @@ def cuota_impaga_al_corte(
     Cuota impaga del mes de consulta (mes calendario del corte).
 
     Mora temprana solo aplica a la cuota del período actual; meses anteriores
-  ya cubiertos no se mezclan con el último pago del mes previo.
+    ya cubiertos no se mezclan con el último pago del mes previo.
     """
+    pago = ultimo_pago_vigente_al_corte(ultimo_pago, fecha_corte)
     anio = fecha_corte.year
     mes = fecha_corte.month
     venc = vencimiento_efectivo(anio, mes, dia_pago, feriados)
     if venc > fecha_corte:
         return None
-    if cuota_consta_pagada(venc, ultimo_pago, fecha_corte, anio, mes):
+    if cuota_consta_pagada(venc, pago, fecha_corte, anio, mes):
         return None
     return (venc, anio, mes)
+
+
+def cuota_impaga_mes_anterior(
+    fecha_corte: date,
+    dia_pago: int,
+    feriados: Set[date],
+    ultimo_pago: Optional[date],
+) -> Optional[Tuple[date, int, int]]:
+    """
+    Cuota impaga del mes calendario anterior al corte.
+
+    Aplica cuando la cuota del mes de corte aún no venció pero el abono
+    registrado no cubre el vencimiento del mes previo (ej. pago 21-abr y
+    vencimiento 15-may impago al consultar 01-jun).
+    """
+    pago = ultimo_pago_vigente_al_corte(ultimo_pago, fecha_corte)
+    if pago is None:
+        return None
+    anio_prev, mes_prev = _mes_anterior(fecha_corte.year, fecha_corte.month)
+    venc = vencimiento_efectivo(anio_prev, mes_prev, dia_pago, feriados)
+    if venc > fecha_corte:
+        return None
+    if cuota_consta_pagada(venc, pago, fecha_corte, anio_prev, mes_prev):
+        return None
+    return (venc, anio_prev, mes_prev)
 
 
 def ultimo_vencimiento_hasta(
@@ -221,6 +262,55 @@ def ultimo_vencimiento_y_mes_pago(
     return vencimiento_efectivo(anio, mes, dia_pago, feriados), anio, mes
 
 
+def cuotas_vencidas_impagas(
+    fecha_corte: date,
+    dia_pago: int,
+    feriados: Set[date],
+    ultimo_pago: Optional[date] = None,
+    max_meses: int = 120,
+) -> Tuple[Tuple[date, int, int], ...]:
+    """
+    Cuotas impagas cuyo vencimiento efectivo es anterior al corte.
+
+    Una cuota cuenta como vencida solo si ``vencimiento_efectivo < fecha_corte``
+    (el día del vencimiento aún es día 0 y no suma como segunda cuota).
+    """
+    pago = ultimo_pago_vigente_al_corte(ultimo_pago, fecha_corte)
+    impagas: list[Tuple[date, int, int]] = []
+    anio, mes = fecha_corte.year, fecha_corte.month
+    for _ in range(max_meses):
+        venc = vencimiento_efectivo(anio, mes, dia_pago, feriados)
+        if venc >= fecha_corte:
+            anio, mes = _mes_anterior(anio, mes)
+            continue
+        if pago is None:
+            impagas.append((venc, anio, mes))
+            break
+        if cuota_consta_pagada(venc, pago, fecha_corte, anio, mes):
+            break
+        impagas.append((venc, anio, mes))
+        anio, mes = _mes_anterior(anio, mes)
+    impagas.sort(key=lambda item: item[0])
+    return tuple(impagas)
+
+
+def _cuota_impaga_dia_vencimiento(
+    fecha_corte: date,
+    dia_pago: int,
+    feriados: Set[date],
+    ultimo_pago: Optional[date],
+) -> Optional[Tuple[date, int, int]]:
+    """Cuota impaga el mismo día de su vencimiento efectivo (día 0 de mora)."""
+    pago = ultimo_pago_vigente_al_corte(ultimo_pago, fecha_corte)
+    anio, mes = fecha_corte.year, fecha_corte.month
+    venc = vencimiento_efectivo(anio, mes, dia_pago, feriados)
+    if venc != fecha_corte:
+        return None
+    if cuota_consta_pagada(venc, pago, fecha_corte, anio, mes):
+        return None
+    return (venc, anio, mes)
+
+
 def calcular_cuota_mora(
     fecha_corte: date,
     dia_pago: int,
@@ -230,9 +320,11 @@ def calcular_cuota_mora(
     """
     Calcula mora según HU:
     - Vencimiento hábil desde DIA PAGO (sáb/dom/feriado → siguiente hábil).
-    - Cuota impaga: mes de consulta vencido sin pago del mismo mes calendario.
-    - Días de mora: solo días hábiles desde el día posterior al vencimiento.
-    - Mora temprana: solo cuota del mes del corte (no arrastra mes anterior).
+    - 0 cuotas vencidas impagas → AL_DIA.
+    - 1 cuota vencida impaga → MORA_TEMPRANA.
+    - 2+ cuotas vencidas impagas → MORA_MADURA.
+    - Días de mora: hábiles desde el día posterior al vencimiento de la cuota
+      impaga más reciente (estrictamente vencida, o la del día 0 si aplica).
     """
     if dia_pago <= 0:
         return CuotaMoraCalculada(
@@ -241,31 +333,39 @@ def calcular_cuota_mora(
             anio_cuota=fecha_corte.year,
             mes_cuota=fecha_corte.month,
             clasificacion="al_dia",
+            cuotas_vencidas_impagas=0,
         )
 
-    impaga = cuota_impaga_al_corte(fecha_corte, dia_pago, feriados, ultimo_pago)
-    if impaga is None:
-        venc, anio_cuota, mes_cuota = ultimo_vencimiento_y_mes_pago(
-            fecha_corte, dia_pago, feriados
+    impagas = cuotas_vencidas_impagas(
+        fecha_corte, dia_pago, feriados, ultimo_pago=ultimo_pago
+    )
+    dia_cero = _cuota_impaga_dia_vencimiento(
+        fecha_corte, dia_pago, feriados, ultimo_pago
+    )
+    cantidad = len(impagas)
+
+    if cantidad == 0 and dia_cero is None:
+        venc = vencimiento_efectivo(
+            fecha_corte.year, fecha_corte.month, dia_pago, feriados
         )
         return CuotaMoraCalculada(
             dias=0,
             vencimiento_efectivo=venc,
-            anio_cuota=anio_cuota,
-            mes_cuota=mes_cuota,
+            anio_cuota=fecha_corte.year,
+            mes_cuota=fecha_corte.month,
             clasificacion="al_dia",
+            cuotas_vencidas_impagas=0,
         )
 
-    venc, anio_cuota, mes_cuota = impaga
-
-    if fecha_corte <= venc:
-        return CuotaMoraCalculada(
-            dias=0,
-            vencimiento_efectivo=venc,
-            anio_cuota=anio_cuota,
-            mes_cuota=mes_cuota,
-            clasificacion="al_dia",
-        )
+    if cantidad >= 2:
+        venc, anio_cuota, mes_cuota = impagas[-1]
+        clasificacion: ClasificacionCuota = "mora_madura"
+    elif cantidad == 1:
+        venc, anio_cuota, mes_cuota = impagas[-1]
+        clasificacion = "mora_temprana"
+    else:
+        venc, anio_cuota, mes_cuota = dia_cero
+        clasificacion = "mora_temprana"
 
     dias = contar_dias_mora_habiles(venc, fecha_corte, feriados)
     return CuotaMoraCalculada(
@@ -273,7 +373,8 @@ def calcular_cuota_mora(
         vencimiento_efectivo=venc,
         anio_cuota=anio_cuota,
         mes_cuota=mes_cuota,
-        clasificacion="mora_temprana" if dias > 0 else "al_dia",
+        clasificacion=clasificacion,
+        cuotas_vencidas_impagas=cantidad,
     )
 
 

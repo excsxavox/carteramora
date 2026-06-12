@@ -10,6 +10,7 @@ from cobranzas.domain.models.credito import Credito
 from cobranzas.domain.services.dias_habiles_service import (
     calcular_cuota_mora,
     dias_max_mora_temprana_efectivo,
+    fecha_consulta_mora,
     parse_fecha_cadetacaco,
 )
 
@@ -38,11 +39,15 @@ def dia_pago_desde_credito(credito: Credito) -> int:
     return _parse_int_seguro(credito.valor_campo("dia_pago"))
 
 
-def fecha_ultimo_pago_desde_credito(credito: Credito) -> Optional[date]:
+def fecha_ultimo_pago_desde_credito(
+    credito: Credito,
+    fecha_limite: Optional[date] = None,
+) -> Optional[date]:
     """Último abono en CADETACACO (para detectar mora madura)."""
+    limite = fecha_limite if fecha_limite is not None else credito.fecha_corte
     for clave in ("fecha_ultimo_pago_ultimo_abono", "fecha_ultimo_pago"):
         parsed = parse_fecha_cadetacaco(credito.valor_campo(clave))
-        if parsed is not None and parsed <= credito.fecha_corte:
+        if parsed is not None and parsed <= limite:
             return parsed
     return None
 
@@ -52,14 +57,9 @@ def dias_atraso_camorosico(credito: Credito) -> int:
     return int(credito.dias_mora or 0)
 
 
-def _mora_cruza_mes_cuota(mes_cuota: str, mes_corte: str) -> bool:
-    """
-    Mora madura solo cuando la cuota impaga no es del mes de corte (cruce de mes).
-
-    Mientras mes_cuota == mes_corte, aunque CAMOROSICO traiga más días calendario
-    o haya mora de varios días hábiles dentro del plazo del DIA PAGO, sigue temprana.
-    """
-    return mes_cuota != mes_corte
+def cuotas_atraso_camorosico(credito: Credito) -> int:
+    """Cuotas atrasadas reportadas en CAMOROSICO (columna CUOTAS ATR.)."""
+    return _parse_int_seguro(credito.valor_campo("cuotas_atr"))
 
 
 def _valores_estado(credito: Credito) -> Tuple[str, ...]:
@@ -122,11 +122,12 @@ class MoraTempranaService:
 
         - Lista base: operaciones en CAMOROSICO (DIAS ATRASO > 0).
         - Días de mora temprana: DIA PAGO + feriados + solo días hábiles.
-        - Cuota del mes de corte (DIA PAGO); si la cuota impaga es de otro mes → madura.
+        - 1 cuota vencida impaga → temprana; 2 o más → madura.
         - Días de mora: solo hábiles desde el día posterior al vencimiento DIA PAGO.
+        - Fecha consulta: día hábil siguiente a la fecha del archivo (vie → lun).
         - Rango [dias_min, dias_max_efectivo]: dentro del plazo de esa cuota
           (hasta el día anterior al siguiente DIA PAGO o fin de mes real).
-        - CAMOROSICO solo filtra entrada (DIAS ATRASO > 0); no define madura ni los días.
+        - CAMOROSICO: DIAS ATRASO > 0 filtra entrada; CUOTAS ATR. = 1 exige mora temprana.
         """
         estados_excl = tuple(
             p.strip().upper() for p in estados_excluidos if p and str(p).strip()
@@ -163,6 +164,7 @@ class MoraTempranaService:
                 continue
 
             ref_camorosico = dias_atraso_camorosico(credito)
+            cuotas_atr = cuotas_atraso_camorosico(credito)
             if ref_camorosico <= 0:
                 _log_decision(
                     "sin_dias_atraso",
@@ -180,12 +182,15 @@ class MoraTempranaService:
                 )
                 continue
 
-            ultimo_pago = fecha_ultimo_pago_desde_credito(credito)
+            fecha_consulta = fecha_consulta_mora(credito.fecha_corte, feriados)
+            ultimo_pago = fecha_ultimo_pago_desde_credito(
+                credito, fecha_limite=fecha_consulta
+            )
             cuota = calcular_cuota_mora(
-                credito.fecha_corte,
+                fecha_consulta,
                 dia_pago,
                 feriados,
-                ultimo_pago=None,
+                ultimo_pago=ultimo_pago,
             )
             dias = cuota.dias
             vencimiento = cuota.vencimiento_efectivo
@@ -198,9 +203,12 @@ class MoraTempranaService:
 
             base_detalle = (
                 f"dias={dias} | origen=dia_pago | ref_camorosico={ref_camorosico} "
+                f"| cuotas_atr_camorosico={cuotas_atr} "
                 f"| dia_pago={dia_pago} | ultimo_pago={ultimo_pago_str} "
+                f"| cuotas_vencidas={cuota.cuotas_vencidas_impagas} "
                 f"| mes_cuota={mes_cuota} | venc_efectivo={vencimiento} "
-                f"| corte={credito.fecha_corte}"
+                f"| corte_archivo={credito.fecha_corte} "
+                f"| consulta={fecha_consulta}"
             )
 
             if cuota.clasificacion == "al_dia":
@@ -211,11 +219,19 @@ class MoraTempranaService:
                 )
                 continue
 
-            if _mora_cruza_mes_cuota(mes_cuota, mes_corte):
+            if cuota.clasificacion == "mora_madura":
                 _log_decision(
                     "mora_madura_cruce_mes",
                     f"Mora | op={op} | MORA_MADURA | {base_detalle} "
-                    f"| mes_corte={mes_corte} | motivo=cuota_cruza_mes_siguiente",
+                    f"| mes_corte={mes_corte} | motivo=dos_o_mas_cuotas_vencidas",
+                )
+                continue
+
+            if cuotas_atr != 1:
+                _log_decision(
+                    "cuotas_atr_no_temprana",
+                    f"Mora | op={op} | NO_TEMPRANA | {base_detalle} "
+                    f"| motivo=cuotas_atr_camorosico!=1 (valor={cuotas_atr})",
                 )
                 continue
 
@@ -264,6 +280,7 @@ class MoraTempranaService:
             "fuera_rango_alto": fuera_alto,
             "sin_dias_atraso": contadores["sin_dias_atraso"],
             "sin_dia_pago": contadores["sin_dia_pago"],
+            "cuotas_atr_no_temprana": contadores["cuotas_atr_no_temprana"],
             "en_mora_temprana": len(elegibles),
             "dias_min": dias_min,
             "dias_max": dias_max,
@@ -271,7 +288,7 @@ class MoraTempranaService:
         logger.info(
             "Mora resumen | entrada=%s | excluidos_regla=%s | "
             "fuera_rango (dias<%s)=%s | fuera_rango (dias>%s)=%s | "
-            "sin_dias_atraso=%s | sin_dia_pago=%s | al_dia=%s | "
+            "sin_dias_atraso=%s | sin_dia_pago=%s | cuotas_atr!=1=%s | al_dia=%s | "
             "madura_cruce_mes=%s | "
             "elegibles=%s | dias_origen=dia_pago",
             metricas["total_entrada"],
@@ -282,6 +299,7 @@ class MoraTempranaService:
             fuera_alto,
             contadores["sin_dias_atraso"],
             contadores["sin_dia_pago"],
+            contadores["cuotas_atr_no_temprana"],
             contadores["cuota_al_dia"],
             contadores["mora_madura_cruce_mes"],
             len(elegibles),
