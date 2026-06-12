@@ -38,7 +38,7 @@ def test_resolver_encuentra_archivos_del_dia(tmp_path: Path):
     assert rutas.archivo_morosidad == mor
     assert rutas.archivo_cartera == car
     assert rutas.archivo_salida_asignacion == (
-        tmp_path / "destino" / "2026" / "05" / "ASIGNACION_05052026.csv"
+        tmp_path / "destino" / "2026" / "05" / "ASIGNACION_05062026.csv"
     )
 
 

@@ -38,6 +38,9 @@ from cobranzas.infrastructure.adapters.te_detallado_cartera_parser import (
     leer_te_detallado_cartera,
 )
 from cobranzas.infrastructure.config.docsmora_resolver import resolver_rutas_cartera
+from cobranzas.infrastructure.config.entregables_mensuales import (
+    ruta_asignacion_desde_fecha_archivo,
+)
 from cobranzas.infrastructure.config.fecha_corte import parsear_fecha_corte
 from cobranzas.infrastructure.config.settings import Settings
 from cobranzas.jobs.pipeline_runner import build_settings
@@ -305,7 +308,9 @@ def ejecutar_seguimiento(
     print(f"\n[Pipeline simulado] elegible_temprana={'SI' if elegibles else 'NO'}")
 
     # --- ASIGNACION.csv ---
-    asignacion_path = rutas.archivo_salida_asignacion
+    asignacion_path = ruta_asignacion_desde_fecha_archivo(
+        cfg.directorio_destino, fecha_corte, feriados
+    )
     filas_asig = _leer_asignacion(asignacion_path, id_recblue)
     print(f"\n[ASIGNACION.csv] {asignacion_path}")
     if filas_asig:

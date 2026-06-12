@@ -138,7 +138,7 @@ def test_ultimo_pago_posterior_al_corte_no_cuenta():
     resultado = calcular_cuota_mora(
         corte, 30, feriados, ultimo_pago=date(2026, 5, 19)
     )
-    assert resultado.clasificacion == "mora_temprana"
+    assert resultado.clasificacion == "mora_madura"
     assert resultado.cuotas_vencidas_impagas == 1
     assert resultado.mes_cuota == 3
     assert resultado.dias == 5
@@ -172,17 +172,17 @@ def test_parse_fecha_cadetacaco_acepta_mm_dd_yyyy():
 
 
 def test_caso_18535358_dia_pago_17_pago_abril():
-    """1 cuota vencida (mayo) → temprana; 2 cuotas (mayo+junio) desde 18-jun → madura."""
+    """Mayo impago en junio → madura por cruce de mes; 2 cuotas desde 18-jun → madura."""
     feriados: set[date] = set()
     up = date(2026, 4, 21)
     jun_1 = calcular_cuota_mora(date(2026, 6, 1), 17, feriados, ultimo_pago=up)
-    assert jun_1.clasificacion == "mora_temprana"
+    assert jun_1.clasificacion == "mora_madura"
     assert jun_1.mes_cuota == 5
     assert jun_1.cuotas_vencidas_impagas == 1
     assert jun_1.dias == 10
 
     jun_17 = calcular_cuota_mora(date(2026, 6, 17), 17, feriados, ultimo_pago=up)
-    assert jun_17.clasificacion == "mora_temprana"
+    assert jun_17.clasificacion == "mora_madura"
     assert jun_17.mes_cuota == 5
     assert jun_17.cuotas_vencidas_impagas == 1
 
@@ -193,17 +193,30 @@ def test_caso_18535358_dia_pago_17_pago_abril():
     assert jun_18.dias == 1
 
 
-def test_mayo_impago_con_pago_abril_consulta_junio_1_es_temprana():
-    """Pago 21-abr no cubre venc 15-may; al 01-jun hay 1 cuota vencida → temprana."""
+def test_mayo_impago_con_pago_abril_consulta_junio_1_es_madura_por_cruce_mes():
+    """Pago 21-abr no cubre venc 15-may; al 01-jun hay 1 cuota de mayo → madura."""
     feriados: set[date] = set()
     resultado = calcular_cuota_mora(
         date(2026, 6, 1), 15, feriados, ultimo_pago=date(2026, 4, 21)
     )
-    assert resultado.clasificacion == "mora_temprana"
+    assert resultado.clasificacion == "mora_madura"
     assert resultado.mes_cuota == 5
     assert resultado.vencimiento_efectivo == date(2026, 5, 15)
     assert resultado.cuotas_vencidas_impagas == 1
     assert resultado.dias == 11
+
+
+def test_dia_pago_25_mayo_impago_junio_es_madura():
+    """Cuota mayo impaga consultada en junio: aunque sea 1 cuota → madura."""
+    feriados: set[date] = set()
+    resultado = calcular_cuota_mora(
+        date(2026, 6, 3), 25, feriados, ultimo_pago=date(2026, 4, 28)
+    )
+    assert resultado.clasificacion == "mora_madura"
+    assert resultado.mes_cuota == 5
+    assert resultado.vencimiento_efectivo == date(2026, 5, 25)
+    assert resultado.cuotas_vencidas_impagas == 1
+    assert resultado.dias == 7
 
 
 def test_dia_pago_5_sin_mora_si_mayo_pagado_antes_de_junio():

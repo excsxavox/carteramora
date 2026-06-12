@@ -311,6 +311,13 @@ def _cuota_impaga_dia_vencimiento(
     return (venc, anio, mes)
 
 
+def cuota_impaga_cruza_mes_consulta(
+    anio_cuota: int, mes_cuota: int, fecha_consulta: date
+) -> bool:
+    """True si la cuota impaga pertenece a un mes anterior al de la consulta."""
+    return (anio_cuota, mes_cuota) < (fecha_consulta.year, fecha_consulta.month)
+
+
 def calcular_cuota_mora(
     fecha_corte: date,
     dia_pago: int,
@@ -321,8 +328,9 @@ def calcular_cuota_mora(
     Calcula mora según HU:
     - Vencimiento hábil desde DIA PAGO (sáb/dom/feriado → siguiente hábil).
     - 0 cuotas vencidas impagas → AL_DIA.
-    - 1 cuota vencida impaga → MORA_TEMPRANA.
+    - 1 cuota vencida impaga del mes de consulta → MORA_TEMPRANA.
     - 2+ cuotas vencidas impagas → MORA_MADURA.
+    - 1 cuota impaga de mes anterior al de la consulta → MORA_MADURA (cruce de mes).
     - Días de mora: hábiles desde el día posterior al vencimiento de la cuota
       impaga más reciente (estrictamente vencida, o la del día 0 si aplica).
     """
@@ -366,6 +374,11 @@ def calcular_cuota_mora(
     else:
         venc, anio_cuota, mes_cuota = dia_cero
         clasificacion = "mora_temprana"
+
+    if clasificacion == "mora_temprana" and cuota_impaga_cruza_mes_consulta(
+        anio_cuota, mes_cuota, fecha_corte
+    ):
+        clasificacion = "mora_madura"
 
     dias = contar_dias_mora_habiles(venc, fecha_corte, feriados)
     return CuotaMoraCalculada(

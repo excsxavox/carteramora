@@ -122,7 +122,8 @@ class MoraTempranaService:
 
         - Lista base: operaciones en CAMOROSICO (DIAS ATRASO > 0).
         - Días de mora temprana: DIA PAGO + feriados + solo días hábiles.
-        - 1 cuota vencida impaga → temprana; 2 o más → madura.
+        - 1 cuota vencida impaga del mes de consulta → temprana; 2 o más → madura.
+        - 1 cuota impaga de mes anterior al de la consulta → madura (cruce de mes).
         - Días de mora: solo hábiles desde el día posterior al vencimiento DIA PAGO.
         - Fecha consulta: día hábil siguiente a la fecha del archivo (vie → lun).
         - Rango [dias_min, dias_max_efectivo]: dentro del plazo de esa cuota
@@ -220,10 +221,14 @@ class MoraTempranaService:
                 continue
 
             if cuota.clasificacion == "mora_madura":
+                if cuota.cuotas_vencidas_impagas >= 2:
+                    motivo_madura = "dos_o_mas_cuotas_vencidas"
+                else:
+                    motivo_madura = "cuota_mes_anterior_cruce_mes"
                 _log_decision(
                     "mora_madura_cruce_mes",
                     f"Mora | op={op} | MORA_MADURA | {base_detalle} "
-                    f"| mes_corte={mes_corte} | motivo=dos_o_mas_cuotas_vencidas",
+                    f"| mes_corte={mes_corte} | motivo={motivo_madura}",
                 )
                 continue
 

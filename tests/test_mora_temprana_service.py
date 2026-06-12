@@ -193,7 +193,7 @@ def test_varios_dias_dentro_plazo_cuota_entra_temprana():
     assert elegibles[0].dias_mora > 1
 
 
-def test_mayo_impago_junio_1_una_cuota_vencida_entra_temprana():
+def test_mayo_impago_junio_1_una_cuota_vencida_es_madura_por_cruce_mes():
     servicio = MoraTempranaService()
     credito = _credito(
         id_credito="MAY_IMPAGA",
@@ -213,21 +213,20 @@ def test_mayo_impago_junio_1_una_cuota_vencida_entra_temprana():
         estados_excluidos=(),
         tipos_oper_excluidos=(),
     )
-    assert len(elegibles) == 1
-    assert metricas["mora_madura_cruce_mes"] == 0
-    assert elegibles[0].dias_mora == 12
+    assert len(elegibles) == 0
+    assert metricas["mora_madura_cruce_mes"] == 1
 
 
 def test_cuotas_atr_distinto_de_un_no_entra_temprana():
     servicio = MoraTempranaService()
     credito = _credito(
         id_credito="CUOTAS2",
-        fecha_corte=date(2026, 6, 1),
+        fecha_corte=date(2026, 6, 11),
         dias_mora=15,
         campos_tab=(
             ("dia_pago", "10"),
             ("cuotas_atr", "2"),
-            ("fecha_ultimo_pago", "04/27/2026"),
+            ("fecha_ultimo_pago", "05/12/2026"),
         ),
     )
     elegibles, metricas = servicio.procesar(

@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional
 
 from cobranzas.application.chain.asignacion_handler import AsignacionHandler
@@ -49,6 +50,7 @@ def build_proceso_chain(
     asignacion_service: Optional[AsignacionCarteraService] = None,
     recblue_adapter: Optional[RecblueArchivoAdapter] = None,
     export_acumulado_service: Optional[ExportarAcumuladoMensualService] = None,
+    directorio_destino: Optional[Path] = None,
 ) -> Handler:
     """
     morosidad → cartera → [Recblue] → [mora temprana → asignación]
@@ -88,12 +90,20 @@ def build_proceso_chain(
         cadena = cadena.enlazar(RecblueEnriquecimientoHandler(recblue_adapter))
 
     if usar_mora_temprana and asignacion_service is not None:
-        cadena = cadena.enlazar(ExportAsignacionHandler(ExportarAsignacionService()))
+        cadena = cadena.enlazar(
+            ExportAsignacionHandler(
+                ExportarAsignacionService(),
+                feriados_repository,
+                directorio_destino,
+            )
+        )
 
     if persistir_service is not None:
         cadena = cadena.enlazar(PersistenciaBDHandler(persistir_service))
 
     if export_acumulado_service is not None:
-        cadena.enlazar(ExportAcumuladoHandler(export_acumulado_service))
+        cadena.enlazar(
+            ExportAcumuladoHandler(export_acumulado_service, feriados_repository)
+        )
 
     return morosidad

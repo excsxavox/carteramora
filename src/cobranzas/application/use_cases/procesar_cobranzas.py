@@ -104,6 +104,7 @@ class ProcesarCobranzasUseCase:
         recblue_adapter: Optional[RecblueArchivoAdapter] = None,
         archivo_recblue: Optional[Path] = None,
         export_acumulado_service: Optional[ExportarAcumuladoMensualService] = None,
+        directorio_destino: Optional[Path] = None,
     ) -> "ProcesarCobranzasUseCase":
         chain = build_proceso_chain(
             morosidad_repository=morosidad_repository,
@@ -118,6 +119,7 @@ class ProcesarCobranzasUseCase:
             asignacion_service=asignacion_service,
             recblue_adapter=recblue_adapter,
             export_acumulado_service=export_acumulado_service,
+            directorio_destino=directorio_destino,
         )
         return cls(
             proceso_chain=chain,
@@ -164,7 +166,7 @@ class ProcesarCobranzasUseCase:
             total_saldo_mora=reporte["total_saldo_mora"],
             archivo_detalle_morosidad=self._archivo_detalle_morosidad,
             archivo_detalle_mora=self._archivo_detalle_mora,
-            archivo_asignacion=self._archivo_asignacion,
+            archivo_asignacion=contexto_final.archivo_asignacion,
             registros_persistidos_bd=contexto_final.registros_persistidos_bd,
             asignaciones_generadas=sum(
                 1 for fila in contexto_final.asignaciones if fila.reasignado

@@ -149,4 +149,5 @@ def build_procesar_cobranzas_use_case(
         recblue_adapter=recblue_adapter,
         archivo_recblue=cfg.archivo_recblue,
         export_acumulado_service=export_acumulado_service,
+        directorio_destino=cfg.directorio_destino,
     )

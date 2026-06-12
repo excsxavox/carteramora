@@ -11,12 +11,16 @@ from cobranzas.application.chain.export_acumulado_handler import ExportAcumulado
 from cobranzas.application.chain.proceso_context import ProcesoContext
 from cobranzas.domain.models.credito import Credito
 from cobranzas.domain.models.fila_acumulado_mensual import FilaAcumuladoMensual
+from cobranzas.domain.services.exportar_acumulado_mensual_service import (
+    ExportarAcumuladoMensualService,
+)
 from cobranzas.infrastructure.adapters.excel_acumulado_writer import (
     COLUMNAS,
     ExcelAcumuladoWriter,
 )
 from cobranzas.infrastructure.config.entregables_mensuales import (
     ruta_acumulado_mensual,
+    ruta_asignacion_desde_fecha_archivo,
     ruta_asignacion_mensual,
 )
 from cobranzas.infrastructure.persistence.base import Base
@@ -88,6 +92,16 @@ def test_mapear_deuda_separa_dias_camorosico_y_mora():
     datos = mapear_deuda(credito)
     assert datos.dias_mora == 1
     assert datos.dias_atraso_camorosico == 3
+
+
+def test_ruta_asignacion_usa_fecha_proceso(tmp_path: Path):
+    feriados: set[date] = set()
+    assert ruta_asignacion_desde_fecha_archivo(
+        tmp_path, date(2026, 6, 1), feriados
+    ) == (tmp_path / "2026" / "06" / "ASIGNACION_06022026.csv")
+    assert ruta_asignacion_desde_fecha_archivo(
+        tmp_path, date(2026, 6, 5), feriados
+    ) == (tmp_path / "2026" / "06" / "ASIGNACION_06082026.csv")
 
 
 def test_rutas_entregables_mensuales(tmp_path: Path):
@@ -218,6 +232,7 @@ def test_repositorio_acumulado_por_fecha_corte():
     assert filas[0].dias_mora == 1
     assert filas[0].usuario_asesor == "520"
     assert filas[0].id_credito_recblue == "99887"
+    assert filas[0].fecha_proceso == fecha
 
 
 def test_repositorio_acumulado_excluye_no_mora_temprana():
@@ -263,10 +278,36 @@ def test_repositorio_acumulado_excluye_no_mora_temprana():
     assert filas == []
 
 
+def test_exportar_acumulado_fecha_proceso_es_consulta_efectiva(tmp_path: Path):
+    """Archivo 2-jun → FECHA DEL PROCESO 3-jun; archivo viernes 5-jun → lunes 8-jun."""
+    repo = MagicMock()
+    writer = ExcelAcumuladoWriter()
+    service = ExportarAcumuladoMensualService(repo, writer, tmp_path)
+    feriados: set[date] = set()
+
+    repo.filas_por_fecha_corte.return_value = [_fila_ejemplo(date(2026, 6, 2), "001")]
+    archivo = service.exportar(date(2026, 6, 2), feriados)
+    libro = load_workbook(archivo, read_only=True, data_only=True)
+    fila = next(libro.active.iter_rows(min_row=2, values_only=True))
+    libro.close()
+    assert _parsear_fecha_desde_excel(fila[0]) == date(2026, 6, 3)
+
+    repo.filas_por_fecha_corte.return_value = [_fila_ejemplo(date(2026, 6, 5), "002")]
+    archivo_vie = service.exportar(date(2026, 6, 5), feriados)
+    libro = load_workbook(archivo_vie, read_only=True, data_only=True)
+    filas = list(libro.active.iter_rows(min_row=2, values_only=True))
+    libro.close()
+    por_op = {str(f[4]): _parsear_fecha_desde_excel(f[0]) for f in filas}
+    assert por_op["001"] == date(2026, 6, 3)
+    assert por_op["002"] == date(2026, 6, 8)
+
+
 def test_export_acumulado_handler_solo_con_persistencia():
     export = MagicMock()
     export.exportar.return_value = Path("destino/2026/05/acumulado.xlsx")
-    handler = ExportAcumuladoHandler(export)
+    feriados = MagicMock()
+    feriados.fechas_vigentes.return_value = set()
+    handler = ExportAcumuladoHandler(export, feriados)
     ctx = ProcesoContext(dias_mora_minimo=1, usar_mora_temprana=True, persistir_en_bd=True)
     ctx.registros_persistidos_bd = 5
     ctx.creditos_mora = [
@@ -275,7 +316,7 @@ def test_export_acumulado_handler_solo_con_persistencia():
 
     resultado = handler._procesar(ctx)
 
-    export.exportar.assert_called_once_with(date(2026, 5, 6))
+    export.exportar.assert_called_once_with(date(2026, 5, 6), set())
     assert resultado.archivo_acumulado_mensual == Path("destino/2026/05/acumulado.xlsx")
 
 
