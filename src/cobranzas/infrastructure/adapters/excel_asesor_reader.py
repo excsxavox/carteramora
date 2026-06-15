@@ -20,6 +20,7 @@ ALIAS_COLUMNAS: Dict[str, Tuple[str, ...]] = {
         "cod_oficial",
         "oficial",
         "id_oficial",
+        "usuario",
     ),
     "nombre": (
         "nombre",
@@ -27,6 +28,7 @@ ALIAS_COLUMNAS: Dict[str, Tuple[str, ...]] = {
         "nombre_oficial",
         "asesor",
     ),
+    "orden": ("orden", "order", "prioridad"),
     "numero_telefono": (
         "numero_telefono",
         "telefono",
@@ -64,7 +66,14 @@ def _celda(fila: Sequence[object], indice: Optional[int]) -> str:
     valor = fila[indice]
     if valor is None:
         return ""
-    return str(valor).strip()
+    return str(valor).replace("\xa0", " ").strip()
+
+
+def _parse_orden(valor: object, numero_fila: int) -> Tuple[int, int]:
+    try:
+        return int(float(str(valor or "").strip())), numero_fila
+    except (TypeError, ValueError):
+        return numero_fila, numero_fila
 
 
 def normalizar_cedula_asesor(valor: str) -> str:
@@ -104,16 +113,17 @@ class ExcelAsesorReader(AsesorExcelRepositoryPort):
             raise ValueError(f"Excel vacío: {archivo_excel}")
 
         indices = _mapear_encabezados(filas[0])
-        if "cedula" not in indices or "nombre" not in indices:
+        if "cedula" not in indices:
             raise ValueError(
-                "Excel debe tener columnas cedula (o codigo_oficial) y nombre. "
+                "Excel debe tener columna cedula, codigo_oficial o usuario. "
                 f"Encabezados detectados: {list(indices.keys())}"
             )
 
-        registros: List[AsesorRegistro] = []
+        registros_ordenados: List[Tuple[Tuple[int, int], AsesorRegistro]] = []
         for numero_fila, fila in enumerate(filas[1:], start=2):
-            cedula = normalizar_cedula_asesor(_celda(fila, indices.get("cedula")))
-            nombre = _celda(fila, indices.get("nombre"))
+            codigo_raw = _celda(fila, indices.get("cedula"))
+            nombre = _celda(fila, indices.get("nombre")) or codigo_raw
+            cedula = normalizar_cedula_asesor(codigo_raw)
             if not cedula and not nombre:
                 continue
             if not cedula:
@@ -121,17 +131,25 @@ class ExcelAsesorReader(AsesorExcelRepositoryPort):
             if not nombre:
                 raise ValueError(f"Fila {numero_fila}: falta nombre del asesor")
 
-            registros.append(
-                AsesorRegistro(
-                    cedula=cedula,
-                    nombre=nombre,
-                    numero_telefono=_celda(fila, indices.get("numero_telefono")),
-                    email=_celda(fila, indices.get("email")),
-                    activo=_parse_activo(_celda(fila, indices.get("activo"))),
+            clave_orden = _parse_orden(
+                fila[indices["orden"]] if "orden" in indices else None,
+                numero_fila,
+            )
+            registros_ordenados.append(
+                (
+                    clave_orden,
+                    AsesorRegistro(
+                        cedula=cedula,
+                        nombre=nombre,
+                        numero_telefono=_celda(fila, indices.get("numero_telefono")),
+                        email=_celda(fila, indices.get("email")),
+                        activo=_parse_activo(_celda(fila, indices.get("activo"))),
+                    ),
                 )
             )
 
-        if not registros:
+        if not registros_ordenados:
             raise ValueError(f"Sin filas de datos en {archivo_excel}")
 
-        return registros
+        registros_ordenados.sort(key=lambda par: par[0])
+        return [registro for _, registro in registros_ordenados]

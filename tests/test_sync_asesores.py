@@ -47,6 +47,24 @@ def test_leer_excel_asesores(tmp_path: Path):
     assert registros[0].nombre == "NATASHA ORCES"
 
 
+def test_leer_excel_asesores_id_usuario_orden(tmp_path: Path):
+    archivo = tmp_path / "asesores_usuario.xlsx"
+    _crear_excel(
+        archivo,
+        [
+            ("ID", "USUARIO", "ORDEN"),
+            (2, "DARODRIGUEZ", 20),
+            (1, "AMOLINA\xa0", 10),
+        ],
+    )
+    registros = ExcelAsesorReader().leer_asesores(archivo)
+    assert len(registros) == 2
+    assert registros[0].cedula == "OF-AMOLINA"
+    assert registros[0].nombre == "AMOLINA"
+    assert registros[1].cedula == "OF-DARODRIGUEZ"
+    assert registros[1].nombre == "DARODRIGUEZ"
+
+
 def test_sincronizar_asesores_desde_excel(tmp_path: Path):
     archivo = tmp_path / "asesores.xlsx"
     _crear_excel(

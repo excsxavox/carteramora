@@ -15,10 +15,17 @@ def main() -> int:
     libro = Workbook()
     hoja = libro.active
     hoja.title = "asesores"
+    # Orden de filas = orden de rotación (equivalente a columna ORDEN 10, 20, …).
     filas = [
         ("cedula", "nombre", "numero_telefono", "email", "activo"),
-        ("087", "LADY JOHANNA GONZALEZ VELASQUEZ", "0990000001", "asesor1@cobranza.local", "si"),
-        ("135", "ASESOR PRUEBA COBRANZAS", "0990000002", "asesor2@cobranza.local", "si"),
+        ("AMOLINA", "AMOLINA", "", "", "si"),
+        ("DARODRIGUEZ", "DARODRIGUEZ", "", "", "si"),
+        ("KCANCHIG", "KCANCHIG", "", "", "si"),
+        ("GLOPEZ", "GLOPEZ", "", "", "si"),
+        ("FLLERENA", "FLLERENA", "", "", "si"),
+        ("LMANOSALVAS", "LMANOSALVAS", "", "", "si"),
+        ("EGUERRA", "EGUERRA", "", "", "si"),
+        ("MARCOS", "MARCOS", "", "", "si"),
     ]
     for fila in filas:
         hoja.append(fila)
