@@ -19,6 +19,12 @@ def ruta_acumulado_mensual(directorio_destino: Path, fecha: date) -> Path:
     return carpeta / f"asignacion_acumulado_{fecha.year}{fecha.month:02d}.xlsx"
 
 
+def ruta_acumulado_fin_mes(directorio_destino: Path, fecha_proceso: date) -> Path:
+    """destino/{año}/{MM}/acumulado_fin_mes_{MMDDYYYY}.xlsx (fecha = proceso efectivo)."""
+    carpeta = carpeta_entregables_mes(directorio_destino, fecha_proceso)
+    return carpeta / f"acumulado_fin_mes_{fecha_corte_mmddyyyy(fecha_proceso)}.xlsx"
+
+
 def ruta_asignacion_mensual(directorio_destino: Path, fecha: date) -> Path:
     """destino/{año}/{MM}/ASIGNACION_{MMDDYYYY}.csv"""
     carpeta = carpeta_entregables_mes(directorio_destino, fecha)

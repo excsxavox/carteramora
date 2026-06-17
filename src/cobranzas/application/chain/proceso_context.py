@@ -22,6 +22,7 @@ class ProcesoContext:
     archivo_detalle_mora: Path = Path(".")
     archivo_asignacion: Path = Path("destino/ASIGNACION.csv")
     archivo_acumulado_mensual: Optional[Path] = None
+    archivo_acumulado_fin_mes: Optional[Path] = None
     archivo_recblue: Optional[Path] = None
     validar_recblue: bool = False
     mapa_recblue: Dict[str, str] = field(default_factory=dict)

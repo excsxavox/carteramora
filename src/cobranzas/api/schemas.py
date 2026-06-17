@@ -50,6 +50,16 @@ class ResumenPipelineResponse(BaseModel):
     asignaciones_generadas: Optional[int] = None
 
 
+class FinMesRunResponse(BaseModel):
+    ok: bool
+    codigo_salida: int
+    fecha_archivo: str
+    fecha_proceso: str
+    archivos: dict
+    resumen: dict
+    mensajes: List[str] = Field(default_factory=list)
+
+
 class PipelineRunResponse(BaseModel):
     ok: bool
     codigo_salida: int

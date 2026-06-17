@@ -1,6 +1,11 @@
 from fastapi import FastAPI, HTTPException
 
-from cobranzas.api.schemas import EjecutarPipelineRequest, PipelineRunResponse
+from cobranzas.api.schemas import (
+    EjecutarPipelineRequest,
+    FinMesRunResponse,
+    PipelineRunResponse,
+)
+from cobranzas.jobs.fin_mes_runner import ejecutar_fin_mes
 from cobranzas.jobs.pipeline_runner import ejecutar_pipeline
 
 app = FastAPI(
@@ -9,6 +14,9 @@ app = FastAPI(
         "Ejecuta el pipeline diario (asesores, feriados, limpieza, asignación, BD).\n\n"
         "**Probar en Swagger:** `POST /pipeline` → Try it out → body "
         '`{"fecha": "05052026"}` → Execute.\n\n'
+        "**Fin de mes (sin asignación):** `POST /acumulado-fin-mes` con la fecha "
+        "del archivo; genera `acumulado_fin_mes_{MMDDYYYY}.xlsx` en destino/{año}/{MM}/ "
+        "con columna FECHA DEL PROCESO = día hábil siguiente.\n\n"
         "La fecha define la carpeta `docsmora/{año}/{MMDDYYYY}/cartera{MMDDYYYY}b/` "
         "(mes-día-año, ej. 05052026)."
     ),
@@ -36,6 +44,35 @@ def ejecutar_pipeline_api(body: EjecutarPipelineRequest) -> dict:
   """
     try:
         resultado = ejecutar_pipeline(
+            fecha_corte=body.fecha,
+            configurar_logs=True,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    payload = resultado.to_dict()
+    if not resultado.ok:
+        raise HTTPException(status_code=500, detail=payload)
+    return payload
+
+
+@app.post(
+    "/acumulado-fin-mes",
+    response_model=FinMesRunResponse,
+    summary="Limpieza + merge sin asignación → acumulado fin mes",
+    tags=["Fin de mes"],
+)
+def ejecutar_acumulado_fin_mes_api(body: EjecutarPipelineRequest) -> dict:
+    """
+    Lee camorosico + cadetacaco (+ Recblue), limpia detalles, fusiona y escribe
+    `destino/{año}/{MM}/acumulado_fin_mes_{MMDDYYYY}.xlsx` sin asignación ni BD.
+    """
+    try:
+        resultado = ejecutar_fin_mes(
             fecha_corte=body.fecha,
             configurar_logs=True,
         )

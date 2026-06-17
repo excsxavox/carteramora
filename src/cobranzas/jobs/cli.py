@@ -41,8 +41,12 @@ def _parser() -> argparse.ArgumentParser:
         help="Añadir columnas nuevas deudor/deuda en SQLite existente",
     )
     sub.add_parser(
+        "fin-mes",
+        help="Limpieza + merge (camorosico, cadetacaco, Recblue) → acumulado fin mes",
+    )
+    sub.add_parser(
         "api",
-        help="Servidor HTTP: POST /pipeline con body {\"fecha\": \"MMDDYYYY\"}",
+        help="Servidor HTTP: POST /pipeline y POST /acumulado-fin-mes",
     )
     p_seguir = sub.add_parser(
         "seguir-credito",
@@ -105,6 +109,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return run()
     if comando == "migrar-bd":
         from cobranzas.jobs.migrar_sqlite_schema import main as run
+
+        return run()
+    if comando == "fin-mes":
+        from cobranzas.jobs.fin_mes_runner import main as run
 
         return run()
     if comando == "api":
