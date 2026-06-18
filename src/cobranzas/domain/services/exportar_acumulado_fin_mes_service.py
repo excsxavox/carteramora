@@ -1,4 +1,4 @@
-"""Genera el Excel acumulado fin de mes desde créditos en mora (sin BD ni asignación)."""
+"""Genera el Excel acumulado fin de mes: unificación CAMOROSICO + CADETACACO (sin filtro)."""
 
 import logging
 from datetime import date
@@ -29,7 +29,7 @@ class ExportarAcumuladoFinMesService:
 
     def exportar(
         self,
-        creditos_mora: List[Credito],
+        creditos: List[Credito],
         fecha_archivo: date,
         feriados: Set[date],
         archivo_origen: str = "",
@@ -37,9 +37,9 @@ class ExportarAcumuladoFinMesService:
         fecha_proceso = fecha_consulta_mora(fecha_archivo, feriados)
         archivo = ruta_acumulado_fin_mes(self._directorio_destino, fecha_proceso)
 
-        if not creditos_mora:
+        if not creditos:
             logger.info(
-                "Acumulado fin mes omitido | archivo=%s | sin créditos en mora",
+                "Acumulado fin mes omitido | archivo=%s | sin operaciones",
                 fecha_archivo.isoformat(),
             )
             return archivo
@@ -51,7 +51,7 @@ class ExportarAcumuladoFinMesService:
                 self._dias_mora_minimo,
                 archivo_origen=archivo_origen,
             )
-            for credito in creditos_mora
+            for credito in creditos
         ]
         escritas = self._excel.anexar_lote(archivo, fecha_archivo, filas)
         logger.info(

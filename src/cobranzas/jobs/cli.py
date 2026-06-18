@@ -40,9 +40,13 @@ def _parser() -> argparse.ArgumentParser:
         "migrar-bd",
         help="Añadir columnas nuevas deudor/deuda en SQLite existente",
     )
-    sub.add_parser(
+    p_fin_mes = sub.add_parser(
         "fin-mes",
         help="Limpieza + merge (camorosico, cadetacaco, Recblue) → acumulado fin mes",
+    )
+    p_fin_mes.add_argument(
+        "--fecha",
+        help="Fecha del archivo MMDDYYYY o YYYY-MM-DD",
     )
     sub.add_parser(
         "api",
@@ -112,9 +116,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
         return run()
     if comando == "fin-mes":
-        from cobranzas.jobs.fin_mes_runner import main as run
+        from cobranzas.jobs.fin_mes_runner import ejecutar_fin_mes
 
-        return run()
+        return ejecutar_fin_mes(fecha_corte=args.fecha).codigo_salida
     if comando == "api":
         from cobranzas.jobs.api_runner import main as run
 

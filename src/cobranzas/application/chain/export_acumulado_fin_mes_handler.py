@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class ExportAcumuladoFinMesHandler(Handler):
-    """Entregable fin de mes: Excel acumulado desde créditos en mora (sin asignación)."""
+    """Entregable fin de mes: unificación CAMOROSICO + CADETACACO, sin filtro de mora."""
 
     def __init__(
         self,
@@ -29,7 +29,7 @@ class ExportAcumuladoFinMesHandler(Handler):
             return contexto
 
         archivo = self._export.exportar(
-            contexto.creditos_mora,
+            contexto.creditos,
             fecha_archivo,
             self._feriados,
             archivo_origen=str(contexto.archivo_morosidad),
@@ -40,8 +40,8 @@ class ExportAcumuladoFinMesHandler(Handler):
 
     @staticmethod
     def _resolver_fecha_archivo(contexto: ProcesoContext) -> Optional[date]:
-        if contexto.creditos_mora:
-            return contexto.creditos_mora[0].fecha_corte
         if contexto.creditos:
             return contexto.creditos[0].fecha_corte
+        if contexto.creditos_mora:
+            return contexto.creditos_mora[0].fecha_corte
         return None

@@ -108,12 +108,13 @@ def test_export_fin_mes_handler():
     handler = ExportAcumuladoFinMesHandler(export, {date(2026, 1, 1)})
     ctx = ProcesoContext(dias_mora_minimo=30)
     ctx.archivo_morosidad = Path("docsmora/camorosico.lis")
-    ctx.creditos_mora = [_credito_mora()]
+    ctx.creditos = [_credito_mora()]
 
     resultado = handler._procesar(ctx)
 
     export.exportar.assert_called_once()
     args, kwargs = export.exportar.call_args
+    assert args[0] == ctx.creditos
     assert kwargs["archivo_origen"].replace("\\", "/") == "docsmora/camorosico.lis"
     assert resultado.archivo_acumulado_fin_mes == Path(
         "destino/2026/06/acumulado_fin_mes_06052026.xlsx"
@@ -143,3 +144,26 @@ def test_excel_fin_mes_acumula_operaciones_mismo_dia(tmp_path: Path):
     idx_op = ENCABEZADOS.index("NUMERO_OPERACION")
     operaciones = {str(f[idx_op]) for f in filas}
     assert operaciones == {"0016796922", "0015219214"}
+
+
+def test_excel_fin_mes_incluye_al_dia_sin_filtro(tmp_path: Path):
+    """La unificación no debe excluir operaciones al día (0 días de mora)."""
+    writer = ExcelAcumuladoFinMesWriter()
+    service = ExportarAcumuladoFinMesService(writer, tmp_path, dias_mora_minimo=30)
+    al_dia = Credito(
+        id_credito="0000000001",
+        cliente="AL DIA",
+        saldo_pendiente=0.0,
+        dias_mora=0,
+        fecha_corte=date(2026, 6, 4),
+        campos_tab=(("dias_atraso", "0"),),
+    )
+
+    service.exportar([al_dia], date(2026, 6, 4), set())
+
+    archivo = tmp_path / "2026" / "06" / "acumulado_fin_mes_06052026.xlsx"
+    libro = load_workbook(archivo, read_only=True, data_only=True)
+    filas = list(libro.active.iter_rows(min_row=2, values_only=True))
+    libro.close()
+    idx_op = ENCABEZADOS.index("NUMERO_OPERACION")
+    assert {str(f[idx_op]) for f in filas} == {"0000000001"}

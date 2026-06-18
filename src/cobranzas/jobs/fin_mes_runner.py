@@ -102,10 +102,10 @@ def ejecutar_fin_mes(
 
     reporte = contexto_final.reporte
     archivo_fin_mes = getattr(contexto_final, "archivo_acumulado_fin_mes", None)
-    filas = len(contexto_final.creditos_mora)
+    filas = len(contexto_final.creditos)
 
     logger.info(
-        "Fin mes OK | archivo=%s | proceso=%s | en_mora=%s | acumulado=%s",
+        "Fin mes OK | archivo=%s | proceso=%s | unificadas=%s | acumulado=%s",
         fecha_archivo.isoformat(),
         fecha_proceso.isoformat(),
         filas,
