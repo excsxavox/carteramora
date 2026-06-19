@@ -48,9 +48,17 @@ def _parser() -> argparse.ArgumentParser:
         "--fecha",
         help="Fecha del archivo MMDDYYYY o YYYY-MM-DD",
     )
+    p_lis_excel = sub.add_parser(
+        "lis-excel",
+        help="Convierte camorosico + cadetacaco del lote a Excel (destino/excel_lis)",
+    )
+    p_lis_excel.add_argument(
+        "--fecha",
+        help="Fecha del archivo MMDDYYYY o YYYY-MM-DD",
+    )
     sub.add_parser(
         "api",
-        help="Servidor HTTP: POST /pipeline y POST /acumulado-fin-mes",
+        help="Servidor HTTP: POST /pipeline, /lis-a-excel y /acumulado-fin-mes",
     )
     p_seguir = sub.add_parser(
         "seguir-credito",
@@ -119,6 +127,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         from cobranzas.jobs.fin_mes_runner import ejecutar_fin_mes
 
         return ejecutar_fin_mes(fecha_corte=args.fecha).codigo_salida
+    if comando == "lis-excel":
+        from cobranzas.jobs.lis_excel_runner import ejecutar_lis_a_excel
+
+        return ejecutar_lis_a_excel(fecha=args.fecha).codigo_salida
     if comando == "api":
         from cobranzas.jobs.api_runner import main as run
 

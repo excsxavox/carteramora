@@ -80,6 +80,29 @@ def test_asignaciones_del_mes_lee_corte_dia_posterior(tmp_path):
     }
 
 
+def test_asignaciones_del_mes_excluye_corte(tmp_path):
+    factory = _setup_bd(tmp_path)
+    repo = SqlAlchemyCobranzaRepository(
+        factory,
+        dias_mora_minimo=1,
+        usar_mora_temprana=True,
+        mora_temprana_dias_min=1,
+        mora_temprana_dias_max=0,
+    )
+    repo.guardar_creditos_mora(
+        [
+            _credito_temprana("001", date(2026, 6, 5), "A", "Asesor A"),
+            _credito_temprana("002", date(2026, 6, 5), "B", "Asesor B"),
+        ]
+    )
+
+    mensual = SqlAlchemyAsignacionMensualRepository(factory)
+    assert mensual.asignaciones_del_mes(2026, 6) != {}
+    assert mensual.asignaciones_del_mes(
+        2026, 6, excluir_fecha=date(2026, 6, 5)
+    ) == {}
+
+
 def test_dia_4_tras_dia_5_persistido_cero_nuevas(tmp_path):
     factory = _setup_bd(tmp_path)
     cobranza = SqlAlchemyCobranzaRepository(

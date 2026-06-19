@@ -47,6 +47,31 @@ def test_post_pipeline_ok(mock_ejecutar):
     mock_ejecutar.assert_called_once_with(
         fecha_corte="05052026",
         configurar_logs=True,
+        es_fin_de_mes=None,
+    )
+
+
+@patch("cobranzas.api.app.ejecutar_pipeline")
+def test_post_pipeline_envia_es_fin_de_mes(mock_ejecutar):
+    mock_ejecutar.return_value = PipelineRunResult(
+        ok=True,
+        codigo_salida=0,
+        fecha_corte="06302026",
+        archivo_morosidad="x",
+        archivo_cartera="x",
+        archivo_salida_morosidad="x",
+        archivo_salida_mora="x",
+        archivo_asignacion="x",
+    )
+    client = TestClient(app)
+    response = client.post(
+        "/pipeline", json={"fecha": "06302026", "es_fin_de_mes": True}
+    )
+    assert response.status_code == 200
+    mock_ejecutar.assert_called_once_with(
+        fecha_corte="06302026",
+        configurar_logs=True,
+        es_fin_de_mes=True,
     )
 
 

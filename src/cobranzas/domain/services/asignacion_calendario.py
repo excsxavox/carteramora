@@ -24,16 +24,6 @@ def es_dia_solo_historial(fecha_corte: date) -> bool:
     return es_ultimo_dia_mes(fecha_corte)
 
 
-def debe_reasignacion_completa_mes(fecha_corte: date) -> bool:
-    """
-    Solo el día 1 del mes se rota toda la cartera elegible.
-
-    Los demás días hábiles del mes conservan el asesor ya persistido en BD
-    y solo asignan operaciones nuevas.
-    """
-    return es_primer_dia_mes(fecha_corte)
-
-
 def debe_asignar_asesores(fecha_corte: date) -> bool:
     return not es_dia_solo_historial(fecha_corte)
 

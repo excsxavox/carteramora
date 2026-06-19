@@ -11,12 +11,19 @@ class EjecutarPipelineRequest(BaseModel):
         description="Fecha de corte: MMDDYYYY (05052026) o YYYY-MM-DD (2026-05-05)",
         examples=["05052026", "2026-05-05"],
     )
+    es_fin_de_mes: Optional[bool] = Field(
+        default=None,
+        description=(
+            "Fin de mes: si es true, la mora temprana NO aplica tope máximo de días. "
+            "Si se omite, usa el valor de .env (ES_FIN_DE_MES)."
+        ),
+    )
 
     model_config = {
         "json_schema_extra": {
             "examples": [
-                {"fecha": "05052026"},
-                {"fecha": "2026-05-05"},
+                {"fecha": "05052026", "es_fin_de_mes": False},
+                {"fecha": "2026-05-05", "es_fin_de_mes": True},
             ]
         }
     }
@@ -66,4 +73,18 @@ class PipelineRunResponse(BaseModel):
     fecha_corte: str
     archivos: ArchivosResponse
     resumen: ResumenPipelineResponse
+    mensajes: List[str] = Field(default_factory=list)
+
+
+class ArchivoConvertidoResponse(BaseModel):
+    origen: str
+    destino: str
+    filas: int
+
+
+class LisExcelRunResponse(BaseModel):
+    ok: bool
+    codigo_salida: int
+    fecha: str
+    archivos: List[ArchivoConvertidoResponse]
     mensajes: List[str] = Field(default_factory=list)

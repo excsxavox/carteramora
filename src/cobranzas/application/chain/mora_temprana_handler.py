@@ -55,6 +55,10 @@ class MoraTempranaHandler(Handler):
             estados_excluidos=config.estados_excluidos,
             tipos_oper_excluidos=config.tipos_oper_excluidos,
             log_muestra=cfg.log_mora_muestra,
+            es_fin_de_mes=contexto.es_fin_de_mes,
+            estados_permitidos=tuple(
+                p.strip() for p in (cfg.estados_permitidos or "").split(",") if p.strip()
+            ),
         )
         metricas["reglas_origen"] = config.origen
         contexto.creditos = creditos

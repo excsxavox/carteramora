@@ -84,6 +84,7 @@ def build_procesar_cobranzas_use_case(
                 usar_mora_temprana=cfg.usar_mora_temprana,
                 mora_temprana_dias_min=cfg.mora_temprana_dias_min,
                 mora_temprana_dias_max=cfg.mora_temprana_dias_max,
+                es_fin_de_mes=cfg.es_fin_de_mes,
             ),
             dias_mora_minimo=cfg.dias_mora_minimo,
         )
@@ -92,6 +93,7 @@ def build_procesar_cobranzas_use_case(
                 SqlAlchemyAcumuladoMensualRepository(session_factory),
                 ExcelAcumuladoWriter(),
                 cfg.directorio_destino,
+                dias_mora_minimo=cfg.acumulado_dias_mora_minimo,
             )
 
     if cfg.usar_mora_temprana and session_factory is not None:
@@ -150,4 +152,5 @@ def build_procesar_cobranzas_use_case(
         archivo_recblue=cfg.archivo_recblue,
         export_acumulado_service=export_acumulado_service,
         directorio_destino=cfg.directorio_destino,
+        es_fin_de_mes=cfg.es_fin_de_mes,
     )

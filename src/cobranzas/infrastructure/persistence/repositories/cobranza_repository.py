@@ -57,6 +57,7 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         usar_mora_temprana: bool = False,
         mora_temprana_dias_min: int = 1,
         mora_temprana_dias_max: int = 0,
+        es_fin_de_mes: bool = False,
     ) -> None:
         self._session_factory = session_factory
         self._dias_mora_minimo = dias_mora_minimo
@@ -64,6 +65,7 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         self._usar_mora_temprana = usar_mora_temprana
         self._mora_temprana_dias_min = mora_temprana_dias_min
         self._mora_temprana_dias_max = mora_temprana_dias_max
+        self._es_fin_de_mes = es_fin_de_mes
         self._cache_recblue: Optional[dict] = None
 
     def guardar_creditos_mora(self, creditos: List[Credito]) -> int:
@@ -135,6 +137,7 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
             usar_mora_temprana=self._usar_mora_temprana,
             mora_temprana_dias_min=self._mora_temprana_dias_min,
             mora_temprana_dias_max=self._mora_temprana_dias_max,
+            es_fin_de_mes=self._es_fin_de_mes,
         )
         id_clave = self._obtener_o_crear_clave(session, CLAVE_CLASIFICACION_MORA)
         id_catalogo = self._obtener_o_crear_catalogo(
@@ -175,13 +178,17 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
     ) -> Deuda:
         deuda = session.scalar(
             select(Deuda)
-            .where(Deuda.numero_operacion == datos.numero_operacion)
+            .where(
+                Deuda.numero_operacion == datos.numero_operacion,
+                Deuda.fecha_corte == datos.fecha_corte,
+            )
             .limit(1)
         )
         if deuda is None:
             deuda = Deuda(
                 id_deudor=id_deudor,
                 numero_operacion=datos.numero_operacion,
+                fecha_corte=datos.fecha_corte,
                 creado_en=datetime.utcnow(),
             )
             session.add(deuda)

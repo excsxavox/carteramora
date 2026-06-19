@@ -47,6 +47,64 @@ def test_estado_asignacion_mora_temprana_con_max_calculado_cero():
     assert estado == ESTADO_ASESOR_MORA_TEMPRANA
 
 
+def test_29_dias_es_mora_temprana_con_max_cero():
+    credito = Credito(
+        "004",
+        "CLIENTE",
+        500.0,
+        29,
+        date(2026, 6, 3),
+        estado_operacion="VIGENTE",
+    )
+    _, _, estado = clasificacion_para_asignacion(
+        credito,
+        dias_mora_minimo=30,
+        usar_mora_temprana=True,
+        mora_temprana_dias_min=1,
+        mora_temprana_dias_max=0,
+    )
+    assert estado == ESTADO_ASESOR_MORA_TEMPRANA
+
+
+def test_30_dias_no_es_mora_temprana_con_max_cero():
+    credito = Credito(
+        "005",
+        "CLIENTE",
+        500.0,
+        30,
+        date(2026, 6, 3),
+        estado_operacion="VIGENTE",
+    )
+    _, _, estado = clasificacion_para_asignacion(
+        credito,
+        dias_mora_minimo=30,
+        usar_mora_temprana=True,
+        mora_temprana_dias_min=1,
+        mora_temprana_dias_max=0,
+    )
+    assert estado != ESTADO_ASESOR_MORA_TEMPRANA
+
+
+def test_fin_de_mes_clasifica_mora_temprana_sin_tope():
+    credito = Credito(
+        "006",
+        "CLIENTE",
+        500.0,
+        301,
+        date(2026, 6, 30),
+        estado_operacion="VIGENTE",
+    )
+    _, _, estado = clasificacion_para_asignacion(
+        credito,
+        dias_mora_minimo=30,
+        usar_mora_temprana=True,
+        mora_temprana_dias_min=1,
+        mora_temprana_dias_max=0,
+        es_fin_de_mes=True,
+    )
+    assert estado == ESTADO_ASESOR_MORA_TEMPRANA
+
+
 def test_estado_operativo_queda_en_deuda_no_en_asignacion():
     credito = Credito(
         "002",

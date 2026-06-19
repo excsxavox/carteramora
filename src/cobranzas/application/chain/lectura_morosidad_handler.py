@@ -15,6 +15,15 @@ class LecturaMorosidadHandler(Handler):
         self._morosidad_repository = morosidad_repository
 
     def _procesar(self, contexto: ProcesoContext) -> ProcesoContext:
+        if contexto.es_fin_de_mes:
+            contexto.creditos = []
+            contexto.creditos_morosidad = []
+            contexto.columnas_morosidad = ()
+            logger.info(
+                "Fin de mes | CAMOROSICO omitido (solo se lee CADETACACO)"
+            )
+            return contexto
+
         creditos = self._morosidad_repository.obtener_creditos()
         contexto.creditos = creditos
         contexto.creditos_morosidad = list(creditos)

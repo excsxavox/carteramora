@@ -24,8 +24,14 @@ from cobranzas.jobs.runner import _configure_logging
 logger = logging.getLogger("cobranzas.pipeline")
 
 
-def build_settings(fecha_corte: Optional[str] = None) -> Settings:
-    """Settings desde .env; si hay fecha, resuelve rutas docsmora para ese día."""
+def build_settings(
+    fecha_corte: Optional[str] = None,
+    es_fin_de_mes: Optional[bool] = None,
+) -> Settings:
+    """Settings desde .env; si hay fecha, resuelve rutas docsmora para ese día.
+
+    ``es_fin_de_mes`` (si no es None) sobreescribe la bandera de fin de mes del .env.
+    """
     import os
 
     overrides: dict = {
@@ -36,6 +42,8 @@ def build_settings(fecha_corte: Optional[str] = None) -> Settings:
         overrides["FECHA_CORTE"] = normalizar_fecha_corte(fecha_corte)
     elif not os.getenv("FECHA_CORTE", "").strip():
         overrides["FECHA_CORTE"] = fecha_corte_mmddyyyy()
+    if es_fin_de_mes is not None:
+        overrides["ES_FIN_DE_MES"] = es_fin_de_mes
     return Settings(**overrides)
 
 
@@ -114,13 +122,15 @@ def ejecutar_pipeline(
     fecha_corte: Optional[str] = None,
     settings: Optional[Settings] = None,
     configurar_logs: bool = True,
+    es_fin_de_mes: Optional[bool] = None,
 ) -> PipelineRunResult:
     """
     Ejecuta Jobs 0 + 0b + 1.
 
     :param fecha_corte: MMDDYYYY o YYYY-MM-DD; None = hoy (.env)
+    :param es_fin_de_mes: si no es None, sobreescribe la bandera de fin de mes
     """
-    cfg = settings or build_settings(fecha_corte)
+    cfg = settings or build_settings(fecha_corte, es_fin_de_mes=es_fin_de_mes)
     if configurar_logs:
         _configure_logging(cfg.log_level)
 

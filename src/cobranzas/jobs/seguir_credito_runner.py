@@ -13,17 +13,13 @@ from typing import List, Optional, Sequence
 from cobranzas.domain.models.credito import Credito
 from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
 from cobranzas.domain.services.dias_habiles_service import (
-    calcular_cuota_mora,
-    dias_max_mora_temprana_efectivo,
-    fecha_consulta_mora,
+    clasificar_mora_camorosico,
 )
 from cobranzas.domain.services.mora_temprana_service import (
     MoraTempranaService,
     debe_excluir_operacion,
     dia_pago_desde_credito,
-    cuotas_atraso_camorosico,
     dias_atraso_camorosico,
-    fecha_ultimo_pago_desde_credito,
 )
 from cobranzas.domain.services.resolver_reglas_mora_service import (
     ResolverReglasMoraService,
@@ -85,9 +81,6 @@ def _imprimir_credito(etiqueta: str, credito: Credito) -> None:
     print(f"    estado         : {credito.estado_operacion}")
     print(f"    tipo oper      : {credito.tipo_operacion}")
     print(f"    dias_atraso CAMOROSICO (S): {credito.dias_mora}")
-    cuotas_atr = cuotas_atraso_camorosico(credito)
-    if cuotas_atr or credito.valor_campo("cuotas_atr"):
-        print(f"    cuotas_atr CAMOROSICO (R): {cuotas_atr}")
     print(f"    saldo          : {credito.saldo_pendiente}")
     print(f"    dia_pago (AG)  : {dia_pago_desde_credito(credito) or '-'}")
     fup = (
@@ -164,7 +157,7 @@ def ejecutar_seguimiento(
         print(f"\n[Archivos] {exc}")
         return 1
 
-    print(f"\n[Archivos]")
+    print("\n[Archivos]")
     print(f"  CAMOROSICO : {rutas.archivo_morosidad}")
     print(f"  CADETACACO : {rutas.archivo_cartera}")
 
@@ -229,70 +222,32 @@ def ejecutar_seguimiento(
 
     dias_atraso = dias_atraso_camorosico(credito)
     dia_pago = dia_pago_desde_credito(credito)
-    fecha_consulta = fecha_consulta_mora(credito.fecha_corte, feriados)
-    ultimo_pago = fecha_ultimo_pago_desde_credito(
-        credito, fecha_limite=fecha_consulta
-    )
-    print("\n[Mora] Reglas (HU-GRC-01)")
+    print("\n[Mora] Reglas (DIAS ATRASO de CAMOROSICO = mandatario)")
     print(f"  fecha archivo (corte)      : {credito.fecha_corte}")
-    print(f"  fecha consulta efectiva    : {fecha_consulta}")
     print(f"  DIAS ATRASO (CAMOROSICO)   : {dias_atraso}")
-    print(f"  CUOTAS ATR. (CAMOROSICO)   : {cuotas_atraso_camorosico(credito)}")
-    print(
-        f"  rango temprana             : {reglas.dias_min}-{reglas.dias_max} "
-        "días hábiles (DIA PAGO + feriados)"
-    )
     if dias_atraso <= 0:
         print("\n  -> AL DIA (sin mora en CAMOROSICO).")
     elif dia_pago <= 0:
         print("  dia_pago (CADETACACO)      : sin dato")
         print("\n  -> NO elegible (se requiere DIA PAGO).")
     else:
-        cuota = calcular_cuota_mora(
-            fecha_consulta, dia_pago, feriados, ultimo_pago=ultimo_pago
+        clasif = clasificar_mora_camorosico(
+            credito.fecha_corte, dias_atraso, dia_pago, feriados
         )
-        mes_cuota = f"{cuota.anio_cuota:04d}-{cuota.mes_cuota:02d}"
-        mes_corte = (
-            f"{credito.fecha_corte.year:04d}-{credito.fecha_corte.month:02d}"
-        )
+        mes_cuota = f"{clasif.anio_cuota:04d}-{clasif.mes_cuota:02d}"
         print(f"  dia_pago (CADETACACO)      : {dia_pago}")
-        print(f"  dias habiles calculados    : {cuota.dias}")
-        print(f"  vencimiento_efectivo       : {cuota.vencimiento_efectivo}")
-        print(f"  mes_cuota                  : {mes_cuota}")
-        print(f"  mes_corte                  : {mes_corte}")
-        print(f"  clasificacion              : {cuota.clasificacion}")
-        print(f"  cuotas_vencidas_impagas    : {cuota.cuotas_vencidas_impagas}")
-        if ultimo_pago:
-            print(f"  ultimo_pago (CADETACACO)   : {ultimo_pago}")
-        if cuota.clasificacion == "al_dia":
-            print("\n  -> AL DIA (sin cuota impaga al corte).")
-        elif cuota.clasificacion == "mora_madura":
+        print(f"  dias mora (CAMOROSICO)     : {clasif.dias}")
+        print(f"  mes_cuota en mora          : {mes_cuota}")
+        print(f"  vencimiento cuota en mora  : {clasif.vencimiento_cuota}")
+        print(f"  limite pago mes siguiente  : {clasif.limite_mes_siguiente}")
+        print(f"  clasificacion              : {clasif.clasificacion}")
+        if clasif.clasificacion == "mora_madura":
             print(
-                "\n  -> MORA MADURA (2+ cuotas vencidas impagas; "
-                "no asignación temprana)."
+                "\n  -> MORA MADURA (la fecha de corte ya pasó el día de pago "
+                "del mes siguiente; no asignación temprana)."
             )
-        elif cuotas_atraso_camorosico(credito) != 1:
-            print(
-                "\n  -> NO elegible (CUOTAS ATR. CAMOROSICO debe ser 1 para "
-                "mora temprana)."
-            )
-        elif cuota.dias < reglas.dias_min:
-            print("\n  -> FUERA DE RANGO (días hábiles por debajo del mínimo).")
         else:
-            plazo_max = dias_max_mora_temprana_efectivo(
-                cuota.vencimiento_efectivo,
-                cuota.anio_cuota,
-                cuota.mes_cuota,
-                dia_pago,
-                feriados,
-                reglas.dias_max,
-            )
-            if plazo_max <= 0 or cuota.dias > plazo_max:
-                print(
-                    f"\n  -> FUERA DE RANGO (días hábiles > plazo cuota={plazo_max})."
-                )
-            else:
-                print("\n  -> ELEGIBLE mora temprana (iría a asignación)")
+            print("\n  -> ELEGIBLE mora temprana (iría a asignación)")
 
     # --- Simulación pipeline ---
     servicio = MoraTempranaService()

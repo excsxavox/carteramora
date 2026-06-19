@@ -59,6 +59,7 @@ class ProcesarCobranzasUseCase:
         tipos_oper_excluidos: tuple[str, ...] = (),
         archivo_asignacion: Path = Path("destino/ASIGNACION.csv"),
         archivo_recblue: Optional[Path] = None,
+        es_fin_de_mes: bool = False,
     ) -> None:
         self._proceso_chain = proceso_chain
         self._dias_mora_minimo = dias_mora_minimo
@@ -75,6 +76,7 @@ class ProcesarCobranzasUseCase:
         self._tipos_oper_excluidos = tipos_oper_excluidos
         self._archivo_asignacion = archivo_asignacion
         self._archivo_recblue = archivo_recblue
+        self._es_fin_de_mes = es_fin_de_mes
 
     @classmethod
     def crear(
@@ -105,6 +107,7 @@ class ProcesarCobranzasUseCase:
         archivo_recblue: Optional[Path] = None,
         export_acumulado_service: Optional[ExportarAcumuladoMensualService] = None,
         directorio_destino: Optional[Path] = None,
+        es_fin_de_mes: bool = False,
     ) -> "ProcesarCobranzasUseCase":
         chain = build_proceso_chain(
             morosidad_repository=morosidad_repository,
@@ -137,6 +140,7 @@ class ProcesarCobranzasUseCase:
             tipos_oper_excluidos=tipos_oper_excluidos,
             archivo_asignacion=archivo_asignacion,
             archivo_recblue=archivo_recblue,
+            es_fin_de_mes=es_fin_de_mes,
         )
 
     def ejecutar(self) -> ProcesarCobranzasResult:
@@ -145,6 +149,7 @@ class ProcesarCobranzasUseCase:
             usar_mora_temprana=self._usar_mora_temprana,
             mora_temprana_dias_min=self._mora_temprana_dias_min,
             mora_temprana_dias_max=self._mora_temprana_dias_max,
+            es_fin_de_mes=self._es_fin_de_mes,
             estados_excluidos=self._estados_excluidos,
             tipos_oper_excluidos=self._tipos_oper_excluidos,
             archivo_morosidad=self._archivo_morosidad,

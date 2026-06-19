@@ -2,6 +2,10 @@ from decimal import Decimal
 from typing import Optional, Tuple
 
 from cobranzas.domain.models.credito import Credito, EstadoMora
+from cobranzas.domain.services.mora_temprana_service import (
+    PISO_DIAS_MORA_TEMPRANA_DEFAULT,
+    TOPE_DIAS_MORA_TEMPRANA_DEFAULT,
+)
 
 CLAVE_CLASIFICACION_MORA = "CLASIFICACION_MORA"
 PREFIJO_CEDULA_ASESOR = "OF-"
@@ -78,20 +82,34 @@ def clasificacion_para_asignacion(
     usar_mora_temprana: bool = False,
     mora_temprana_dias_min: int = 1,
     mora_temprana_dias_max: int = 0,
+    es_fin_de_mes: bool = False,
 ) -> Tuple[str, str, str]:
     """
     Clasificación de cobranza para asesores_deuda.
 
     Retorna (valor_catalogo, descripcion_catalogo, estado_asesores_deuda).
     El estado operativo del crédito (VIGENTE, CASTIGADO…) queda en deuda.estado.
+    Con ``es_fin_de_mes=True`` no se aplica el tope máximo de días de mora.
     """
-    if usar_mora_temprana and credito.dias_mora >= mora_temprana_dias_min:
-        if mora_temprana_dias_max <= 0 or credito.dias_mora <= mora_temprana_dias_max:
-            return (
-                CATALOGO_MORA_TEMPRANA,
-                "Mora temprana",
-                ESTADO_ASESOR_MORA_TEMPRANA,
-            )
+    piso = (
+        mora_temprana_dias_min
+        if mora_temprana_dias_min > 0
+        else PISO_DIAS_MORA_TEMPRANA_DEFAULT
+    )
+    tope = (
+        mora_temprana_dias_max
+        if mora_temprana_dias_max > 0
+        else TOPE_DIAS_MORA_TEMPRANA_DEFAULT
+    )
+    dentro_rango = credito.dias_mora >= piso and (
+        es_fin_de_mes or credito.dias_mora <= tope
+    )
+    if usar_mora_temprana and dentro_rango:
+        return (
+            CATALOGO_MORA_TEMPRANA,
+            "Mora temprana",
+            ESTADO_ASESOR_MORA_TEMPRANA,
+        )
 
     estado = credito.clasificar_mora(dias_mora_minimo)
     if estado == EstadoMora.MORA_GRAVE:

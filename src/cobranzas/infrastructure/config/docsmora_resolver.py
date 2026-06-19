@@ -27,7 +27,7 @@ __all__ = [
 class RutasCarteraDia:
     fecha_corte: str
     carpeta_lote: Path
-    archivo_morosidad: Path
+    archivo_morosidad: Optional[Path]
     archivo_cartera: Path
     archivo_salida_morosidad: Path
     archivo_salida_mora: Path
@@ -134,8 +134,11 @@ def _buscar_lis_en_lote(
     descripcion: str,
     patrones_legacy: Optional[tuple[str, ...]] = None,
     directorio_docsmora: Optional[Path] = None,
-) -> Path:
+    opcional: bool = False,
+) -> Optional[Path]:
     if not carpeta_lote.is_dir():
+        if opcional:
+            return None
         raise FileNotFoundError(
             _mensaje_carpeta_inexistente(
                 fecha_mmddyyyy, carpeta_lote, directorio_docsmora
@@ -157,6 +160,8 @@ def _buscar_lis_en_lote(
             )
 
     if not candidatos:
+        if opcional:
+            return None
         ejemplos = ", ".join(
             p.format(fecha=fecha_mmddyyyy) for p in patrones[:2]
         )
@@ -176,6 +181,7 @@ def resolver_rutas_cartera(
     fecha: Optional[date] = None,
     fecha_mmddyyyy: Optional[str] = None,
     feriados: Optional[Set[date]] = None,
+    morosidad_opcional: bool = False,
 ) -> RutasCarteraDia:
     """
     Busca entradas y define salidas para la fecha indicada (hoy por defecto).
@@ -202,6 +208,7 @@ def resolver_rutas_cartera(
         ftxt,
         "camorosico",
         directorio_docsmora=directorio_docsmora,
+        opcional=morosidad_opcional,
     )
     cartera = _buscar_lis_en_lote(
         carpeta_entrada,

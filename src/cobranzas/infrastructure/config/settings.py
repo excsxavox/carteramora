@@ -106,6 +106,21 @@ class Settings(BaseSettings):
         alias="MORA_TEMPRANA_DIAS_MAX",
         description="0 = máximo calculado por período de cuota (mes y DIA PAGO); >0 techo opcional",
     )
+    acumulado_dias_mora_minimo: int = Field(
+        default=2,
+        alias="ACUMULADO_DIAS_MORA_MINIMO",
+        description="Acumulado mensual (asignacion_acumulado): solo operaciones con días de mora >= este valor (2 = más de 1 día)",
+    )
+    es_fin_de_mes: bool = Field(
+        default=False,
+        alias="ES_FIN_DE_MES",
+        description="True = proceso de fin de mes: la mora temprana NO aplica tope máximo de días de mora",
+    )
+    estados_permitidos: str = Field(
+        default="",
+        alias="ESTADOS_PERMITIDOS",
+        description="Lista blanca de estados (CSV); si se define, solo esas operaciones pasan (ej. RESOLUCION,VIGENTE)",
+    )
     estados_excluidos: str = Field(
         default="CASTIGADO,JUDICIAL,GESTION JUDICIAL",
         alias="ESTADOS_EXCLUIDOS",
@@ -198,6 +213,7 @@ class Settings(BaseSettings):
             self.directorio_docsmora,
             self.directorio_destino,
             fecha=fecha,
+            morosidad_opcional=self.es_fin_de_mes,
         )
 
         if self.archivo_morosidad is None:

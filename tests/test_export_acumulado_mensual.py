@@ -39,7 +39,11 @@ from cobranzas.infrastructure.persistence.models import (
 from cobranzas.infrastructure.persistence.repositories.acumulado_mensual_repository import (
     SqlAlchemyAcumuladoMensualRepository,
 )
+from cobranzas.infrastructure.persistence.repositories.cobranza_repository import (
+    SqlAlchemyCobranzaRepository,
+)
 from cobranzas.infrastructure.persistence.session import get_session_factory
+from sqlalchemy import select
 
 
 def _fila_ejemplo(fecha: date, operacion: str = "001") -> FilaAcumuladoMensual:
@@ -133,11 +137,13 @@ def test_excel_acumulado_una_fila_por_operacion(tmp_path: Path):
     libro.close()
 
 
-def test_excel_acumulado_actualiza_operacion_existente(tmp_path: Path):
+def test_excel_acumulado_conserva_fecha_proceso_anterior(tmp_path: Path):
+    """Una operación ya registrada en una fecha de proceso anterior (se conserva
+    del corte previo) no debe moverse a la fecha de proceso más reciente."""
     archivo = tmp_path / "acumulado.xlsx"
     writer = ExcelAcumuladoWriter()
-    dia1 = date(2026, 5, 5)
-    dia2 = date(2026, 5, 6)
+    dia1 = date(2026, 6, 1)
+    dia2 = date(2026, 6, 2)
 
     writer.anexar_lote(archivo, dia1, [_fila_ejemplo(dia1, "001")])
     writer.anexar_lote(
@@ -157,8 +163,30 @@ def test_excel_acumulado_actualiza_operacion_existente(tmp_path: Path):
     libro.close()
 
     assert len(filas) == 1
+    assert filas[0][2] == "CLIENTE UNO"
+    assert _parsear_fecha_desde_excel(filas[0][0]) == dia1
+
+
+def test_excel_acumulado_refresca_misma_fecha_proceso(tmp_path: Path):
+    """Re-ejecutar el mismo corte (misma fecha de proceso) sí refresca los datos."""
+    archivo = tmp_path / "acumulado.xlsx"
+    writer = ExcelAcumuladoWriter()
+    dia = date(2026, 6, 1)
+
+    writer.anexar_lote(archivo, dia, [_fila_ejemplo(dia, "001")])
+    writer.anexar_lote(
+        archivo,
+        dia,
+        [replace(_fila_ejemplo(dia, "001"), nombre="CLIENTE ACTUALIZADO")],
+    )
+
+    libro = load_workbook(archivo, read_only=True, data_only=True)
+    filas = list(libro.active.iter_rows(min_row=2, values_only=True))
+    libro.close()
+
+    assert len(filas) == 1
     assert filas[0][2] == "CLIENTE ACTUALIZADO"
-    assert _parsear_fecha_desde_excel(filas[0][0]) == dia2
+    assert _parsear_fecha_desde_excel(filas[0][0]) == dia
 
 
 def _parsear_fecha_desde_excel(valor) -> date:
@@ -318,6 +346,98 @@ def test_export_acumulado_handler_solo_con_persistencia():
 
     export.exportar.assert_called_once_with(date(2026, 5, 6), set())
     assert resultado.archivo_acumulado_mensual == Path("destino/2026/05/acumulado.xlsx")
+
+
+def test_persistir_misma_operacion_en_dos_cortes_crea_filas_separadas():
+    """Regresión: la misma operación en cortes distintos debe generar una
+    deuda por corte (antes se 'robaba' la fila del corte anterior)."""
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session_factory = get_session_factory(engine)
+    repo = SqlAlchemyCobranzaRepository(session_factory, usar_mora_temprana=True)
+
+    corte_may = date(2026, 5, 29)
+    corte_jun = date(2026, 6, 1)
+
+    def _credito(fecha: date) -> Credito:
+        return Credito(
+            id_credito="0011244704",
+            cliente="CLIENTE",
+            saldo_pendiente=100.0,
+            dias_mora=1,
+            fecha_corte=fecha,
+            codigo_oficial="520",
+            estado_operacion="VIGENTE",
+        )
+
+    repo.guardar_creditos_mora([_credito(corte_may)])
+    repo.guardar_creditos_mora([_credito(corte_jun)])
+
+    with session_factory() as session:
+        deudas = session.scalars(
+            select(Deuda).where(Deuda.numero_operacion == "0011244704")
+        ).all()
+        cortes = sorted(d.fecha_corte for d in deudas)
+    assert cortes == [corte_may, corte_jun]
+
+    acumulado = SqlAlchemyAcumuladoMensualRepository(session_factory)
+    assert len(acumulado.filas_por_fecha_corte(corte_may)) == 1
+    assert len(acumulado.filas_por_fecha_corte(corte_jun)) == 1
+
+
+def test_exportar_acumulado_filtra_dias_mora_uno(tmp_path: Path):
+    """Solo se almacenan operaciones con días de mora > 1 (>= 2 por default)."""
+    repo = MagicMock()
+    writer = ExcelAcumuladoWriter()
+    service = ExportarAcumuladoMensualService(repo, writer, tmp_path)
+    fecha = date(2026, 6, 2)
+
+    repo.filas_por_fecha_corte.return_value = [
+        replace(_fila_ejemplo(fecha, "001"), dias_atraso_camorosico=3, dias_mora=3),
+        replace(_fila_ejemplo(fecha, "002"), dias_atraso_camorosico=1, dias_mora=1),
+        replace(_fila_ejemplo(fecha, "003"), dias_atraso_camorosico=2, dias_mora=0),
+    ]
+    archivo = service.exportar(fecha, set())
+
+    libro = load_workbook(archivo, read_only=True, data_only=True)
+    filas = list(libro.active.iter_rows(min_row=2, values_only=True))
+    libro.close()
+    operaciones = {str(f[4]) for f in filas}
+    assert operaciones == {"001", "003"}
+
+
+def test_exportar_acumulado_usa_dias_mora_si_no_hay_camorosico(tmp_path: Path):
+    """Si no hay días CAMOROSICO, se evalúa dias_mora."""
+    repo = MagicMock()
+    writer = ExcelAcumuladoWriter()
+    service = ExportarAcumuladoMensualService(repo, writer, tmp_path)
+    fecha = date(2026, 6, 2)
+
+    repo.filas_por_fecha_corte.return_value = [
+        replace(_fila_ejemplo(fecha, "001"), dias_atraso_camorosico=None, dias_mora=5),
+        replace(_fila_ejemplo(fecha, "002"), dias_atraso_camorosico=None, dias_mora=1),
+    ]
+    archivo = service.exportar(fecha, set())
+
+    libro = load_workbook(archivo, read_only=True, data_only=True)
+    filas = list(libro.active.iter_rows(min_row=2, values_only=True))
+    libro.close()
+    operaciones = {str(f[4]) for f in filas}
+    assert operaciones == {"001"}
+
+
+def test_exportar_acumulado_omite_si_todas_fuera_de_rango(tmp_path: Path):
+    repo = MagicMock()
+    writer = ExcelAcumuladoWriter()
+    service = ExportarAcumuladoMensualService(repo, writer, tmp_path)
+    fecha = date(2026, 6, 2)
+
+    repo.filas_por_fecha_corte.return_value = [
+        replace(_fila_ejemplo(fecha, "001"), dias_atraso_camorosico=1, dias_mora=1),
+    ]
+    archivo = service.exportar(fecha, set())
+
+    assert not archivo.exists()
 
 
 def test_export_acumulado_handler_omite_sin_persistencia():

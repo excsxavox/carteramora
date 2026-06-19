@@ -107,6 +107,11 @@ def _mes_siguiente(anio: int, mes: int) -> Tuple[int, int]:
     return anio, mes + 1
 
 
+def _sumar_meses(anio: int, mes: int, delta: int) -> Tuple[int, int]:
+    indice = (anio * 12 + (mes - 1)) + delta
+    return indice // 12, (indice % 12) + 1
+
+
 def max_dias_mora_periodo_cuota(
     vencimiento: date,
     anio_cuota: int,
@@ -406,3 +411,80 @@ def dias_mora_temprana(
     if resultado.clasificacion != "mora_temprana":
         return 0
     return resultado.dias
+
+
+@dataclass(frozen=True)
+class ClasificacionMoraCamorosico:
+    """Clasificación de mora usando DIAS ATRASO de CAMOROSICO como mandatario."""
+
+    clasificacion: ClasificacionCuota
+    dias: int
+    vencimiento_cuota: date
+    limite_mes_siguiente: date
+    anio_cuota: int
+    mes_cuota: int
+
+
+def clasificar_mora_camorosico(
+    fecha_corte: date,
+    dias_atraso: int,
+    dia_pago: int,
+    feriados: Set[date],
+) -> ClasificacionMoraCamorosico:
+    """
+    Clasifica mora tomando los DIAS ATRASO de CAMOROSICO como valor mandatario.
+
+    Reglas:
+    - ``dias_atraso <= 0`` o sin ``dia_pago`` → AL_DIA (no entra a asignación).
+    - MORA_TEMPRANA: una sola cuota vencida, es decir la fecha de corte aún NO
+      alcanza el día de pago (ajustado a día hábil) del mes siguiente al de la
+      cuota en mora.
+    - MORA_MADURA: la fecha de corte ya alcanzó/pasó ese día límite del mes
+      siguiente (habría 2 o más cuotas vencidas).
+
+    No se recalculan los días de mora: ``dias`` siempre es el valor de CAMOROSICO.
+    """
+    if dias_atraso <= 0 or dia_pago <= 0:
+        return ClasificacionMoraCamorosico(
+            clasificacion="al_dia",
+            dias=max(dias_atraso, 0),
+            vencimiento_cuota=fecha_corte,
+            limite_mes_siguiente=fecha_corte,
+            anio_cuota=fecha_corte.year,
+            mes_cuota=fecha_corte.month,
+        )
+
+    # La cuota en mora es la cuota cuyo vencimiento dio inicio al atraso.
+    # Se estima por la fecha de inicio del atraso (corte - DIAS ATRASO) y se elige
+    # el vencimiento (DIA PAGO ajustado a hábil) MÁS CERCANO a esa fecha, entre los
+    # ya vencidos al corte. Tomar el "más cercano" evita errores de borde cuando los
+    # DIAS ATRASO de CAMOROSICO no cuadran exactamente con el calendario.
+    inicio_atraso = fecha_corte - timedelta(days=dias_atraso)
+    candidatos = []
+    for delta in (1, 0, -1):
+        anio, mes = _sumar_meses(inicio_atraso.year, inicio_atraso.month, delta)
+        venc = vencimiento_efectivo(anio, mes, dia_pago, feriados)
+        if venc <= fecha_corte:
+            candidatos.append((abs((venc - inicio_atraso).days), venc, anio, mes))
+
+    if candidatos:
+        candidatos.sort(key=lambda item: item[0])
+        _, venc_cuota, anio_cuota, mes_cuota = candidatos[0]
+    else:
+        anio_cuota, mes_cuota = inicio_atraso.year, inicio_atraso.month
+        venc_cuota = vencimiento_efectivo(anio_cuota, mes_cuota, dia_pago, feriados)
+
+    anio_sig, mes_sig = _mes_siguiente(anio_cuota, mes_cuota)
+    limite = vencimiento_efectivo(anio_sig, mes_sig, dia_pago, feriados)
+
+    clasificacion: ClasificacionCuota = (
+        "mora_temprana" if fecha_corte < limite else "mora_madura"
+    )
+    return ClasificacionMoraCamorosico(
+        clasificacion=clasificacion,
+        dias=dias_atraso,
+        vencimiento_cuota=venc_cuota,
+        limite_mes_siguiente=limite,
+        anio_cuota=anio_cuota,
+        mes_cuota=mes_cuota,
+    )

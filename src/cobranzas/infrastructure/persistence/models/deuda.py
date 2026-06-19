@@ -20,9 +20,11 @@ class Deuda(Base):
         ForeignKey("deudores.id_deudor"), nullable=False
     )
     numero_operacion: Mapped[Optional[str]] = mapped_column(
-        String(50), nullable=True, unique=True
+        String(50), nullable=True, index=True
     )
-    fecha_corte: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    fecha_corte: Mapped[Optional[date]] = mapped_column(
+        Date, nullable=True, index=True
+    )
     archivo_origen: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     fecha_carga: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=False), nullable=True

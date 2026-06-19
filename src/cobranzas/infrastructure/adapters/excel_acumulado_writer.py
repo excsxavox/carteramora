@@ -160,8 +160,22 @@ class ExcelAcumuladoWriter(AcumuladoExcelPort):
 
         for fila in filas:
             operacion = fila.operacion.strip()
-            if operacion:
-                por_operacion[operacion] = _fila_a_valores(fila)
+            if not operacion:
+                continue
+            existente = por_operacion.get(operacion)
+            if existente is not None:
+                fecha_existente = _parsear_fecha_celda(existente[_IDX_FECHA_PROCESO])
+                fecha_nueva = fila.fecha_proceso
+                if (
+                    fecha_existente is not None
+                    and fecha_nueva is not None
+                    and fecha_nueva > fecha_existente
+                ):
+                    # La operación ya estaba registrada en una fecha de proceso
+                    # anterior (se conserva del corte previo): no se mueve hacia
+                    # adelante ni se duplica.
+                    continue
+            por_operacion[operacion] = _fila_a_valores(fila)
 
         libro = Workbook()
         hoja = libro.active

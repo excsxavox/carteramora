@@ -27,6 +27,15 @@ class LecturaCarteraHandler(Handler):
             creditos_cartera[0].columnas_tab() if creditos_cartera else ()
         )
 
+        if contexto.es_fin_de_mes:
+            contexto.creditos = creditos_cartera
+            contexto.total_enriquecidos = len(creditos_cartera)
+            logger.info(
+                "Fin de mes | base=CADETACACO | operaciones=%s (sin merge CAMOROSICO)",
+                len(creditos_cartera),
+            )
+            return contexto
+
         ops_morosidad = {c.id_credito.strip() for c in contexto.creditos}
         ops_cartera = {c.id_credito.strip() for c in creditos_cartera}
         en_ambos = ops_morosidad & ops_cartera

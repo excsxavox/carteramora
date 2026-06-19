@@ -12,7 +12,11 @@ def test_pipeline_main_retorna_codigo_contexto(monkeypatch):
 
     mock_chain = MagicMock()
     mock_chain.manejar.return_value = contexto
-    monkeypatch.setattr(pipeline_runner, "build_settings", lambda fecha=None: settings)
+    monkeypatch.setattr(
+        pipeline_runner,
+        "build_settings",
+        lambda fecha=None, es_fin_de_mes=None: settings,
+    )
     monkeypatch.setattr(pipeline_runner, "_configure_logging", lambda _l: None)
     monkeypatch.setattr(pipeline_runner, "_preparar_base_datos", lambda _s: None)
     monkeypatch.setattr(pipeline_runner, "build_pipeline_chain", lambda: mock_chain)

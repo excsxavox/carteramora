@@ -14,6 +14,7 @@ class ProcesoContext:
     usar_mora_temprana: bool = False
     mora_temprana_dias_min: int = 1
     mora_temprana_dias_max: int = 0
+    es_fin_de_mes: bool = False
     estados_excluidos: tuple[str, ...] = ()
     tipos_oper_excluidos: tuple[str, ...] = ()
     archivo_morosidad: Path = Path(".")
