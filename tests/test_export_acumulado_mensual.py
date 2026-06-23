@@ -344,7 +344,7 @@ def test_export_acumulado_handler_solo_con_persistencia():
 
     resultado = handler._procesar(ctx)
 
-    export.exportar.assert_called_once_with(date(2026, 5, 6), set())
+    export.exportar.assert_called_once_with(date(2026, 5, 6), set(), es_fin_de_mes=False)
     assert resultado.archivo_acumulado_mensual == Path("destino/2026/05/acumulado.xlsx")
 
 
@@ -385,8 +385,8 @@ def test_persistir_misma_operacion_en_dos_cortes_crea_filas_separadas():
     assert len(acumulado.filas_por_fecha_corte(corte_jun)) == 1
 
 
-def test_exportar_acumulado_filtra_dias_mora_uno(tmp_path: Path):
-    """Solo se almacenan operaciones con días de mora > 1 (>= 2 por default)."""
+def test_exportar_acumulado_diario_incluye_dias_mora_uno(tmp_path: Path):
+    """En el proceso diario el acumulado refleja TODO lo asignado (piso 1 día)."""
     repo = MagicMock()
     writer = ExcelAcumuladoWriter()
     service = ExportarAcumuladoMensualService(repo, writer, tmp_path)
@@ -403,11 +403,32 @@ def test_exportar_acumulado_filtra_dias_mora_uno(tmp_path: Path):
     filas = list(libro.active.iter_rows(min_row=2, values_only=True))
     libro.close()
     operaciones = {str(f[4]) for f in filas}
+    assert operaciones == {"001", "002", "003"}
+
+
+def test_exportar_acumulado_fin_de_mes_filtra_dias_mora_uno(tmp_path: Path):
+    """En fin de mes solo se almacenan operaciones con días de mora > 1 (>= 2)."""
+    repo = MagicMock()
+    writer = ExcelAcumuladoWriter()
+    service = ExportarAcumuladoMensualService(repo, writer, tmp_path)
+    fecha = date(2026, 6, 2)
+
+    repo.filas_por_fecha_corte.return_value = [
+        replace(_fila_ejemplo(fecha, "001"), dias_atraso_camorosico=3, dias_mora=3),
+        replace(_fila_ejemplo(fecha, "002"), dias_atraso_camorosico=1, dias_mora=1),
+        replace(_fila_ejemplo(fecha, "003"), dias_atraso_camorosico=2, dias_mora=0),
+    ]
+    archivo = service.exportar(fecha, set(), es_fin_de_mes=True)
+
+    libro = load_workbook(archivo, read_only=True, data_only=True)
+    filas = list(libro.active.iter_rows(min_row=2, values_only=True))
+    libro.close()
+    operaciones = {str(f[4]) for f in filas}
     assert operaciones == {"001", "003"}
 
 
-def test_exportar_acumulado_usa_dias_mora_si_no_hay_camorosico(tmp_path: Path):
-    """Si no hay días CAMOROSICO, se evalúa dias_mora."""
+def test_exportar_acumulado_fin_de_mes_usa_dias_mora_si_no_hay_camorosico(tmp_path: Path):
+    """Fin de mes: si no hay días CAMOROSICO, se evalúa dias_mora."""
     repo = MagicMock()
     writer = ExcelAcumuladoWriter()
     service = ExportarAcumuladoMensualService(repo, writer, tmp_path)
@@ -417,7 +438,7 @@ def test_exportar_acumulado_usa_dias_mora_si_no_hay_camorosico(tmp_path: Path):
         replace(_fila_ejemplo(fecha, "001"), dias_atraso_camorosico=None, dias_mora=5),
         replace(_fila_ejemplo(fecha, "002"), dias_atraso_camorosico=None, dias_mora=1),
     ]
-    archivo = service.exportar(fecha, set())
+    archivo = service.exportar(fecha, set(), es_fin_de_mes=True)
 
     libro = load_workbook(archivo, read_only=True, data_only=True)
     filas = list(libro.active.iter_rows(min_row=2, values_only=True))
@@ -426,7 +447,7 @@ def test_exportar_acumulado_usa_dias_mora_si_no_hay_camorosico(tmp_path: Path):
     assert operaciones == {"001"}
 
 
-def test_exportar_acumulado_omite_si_todas_fuera_de_rango(tmp_path: Path):
+def test_exportar_acumulado_fin_de_mes_omite_si_todas_fuera_de_rango(tmp_path: Path):
     repo = MagicMock()
     writer = ExcelAcumuladoWriter()
     service = ExportarAcumuladoMensualService(repo, writer, tmp_path)
@@ -435,7 +456,7 @@ def test_exportar_acumulado_omite_si_todas_fuera_de_rango(tmp_path: Path):
     repo.filas_por_fecha_corte.return_value = [
         replace(_fila_ejemplo(fecha, "001"), dias_atraso_camorosico=1, dias_mora=1),
     ]
-    archivo = service.exportar(fecha, set())
+    archivo = service.exportar(fecha, set(), es_fin_de_mes=True)
 
     assert not archivo.exists()
 

@@ -42,13 +42,19 @@ class ExportarAcumuladoMensualService:
             else DIAS_MORA_MINIMO_ACUMULADO_DEFAULT
         )
 
-    def exportar(self, fecha_archivo: date, feriados: Set[date]) -> Path:
+    def exportar(
+        self,
+        fecha_archivo: date,
+        feriados: Set[date],
+        es_fin_de_mes: bool = False,
+    ) -> Path:
         """
         Lee el lote por fecha del archivo (.lis) y escribe en Excel la fecha de proceso
         (consulta efectiva: día hábil siguiente al archivo).
 
-        Filtra al acumulado solo operaciones con días de mora >= ``dias_mora_minimo``
-        (default 2, es decir más de 1 día).
+        En el proceso diario el acumulado refleja TODO lo asignado (mora temprana,
+        piso de 1 día). El filtro de días de mora >= ``dias_mora_minimo``
+        (default 2, es decir más de 1 día) solo se aplica en fin de mes.
         """
         fecha_proceso = fecha_consulta_mora(fecha_archivo, feriados)
         archivo = ruta_acumulado_mensual(self._directorio_destino, fecha_proceso)
@@ -60,11 +66,10 @@ class ExportarAcumuladoMensualService:
             )
             return archivo
 
+        dias_minimo = self._dias_mora_minimo if es_fin_de_mes else 1
         total_bd = len(filas_bd)
         filas_filtradas = [
-            fila
-            for fila in filas_bd
-            if _dias_mora_efectivos(fila) >= self._dias_mora_minimo
+            fila for fila in filas_bd if _dias_mora_efectivos(fila) >= dias_minimo
         ]
         descartadas = total_bd - len(filas_filtradas)
         if not filas_filtradas:
@@ -73,7 +78,7 @@ class ExportarAcumuladoMensualService:
                 "por días de mora < %s",
                 fecha_archivo.isoformat(),
                 descartadas,
-                self._dias_mora_minimo,
+                dias_minimo,
             )
             return archivo
 
@@ -83,11 +88,12 @@ class ExportarAcumuladoMensualService:
         escritas = self._excel.anexar_lote(archivo, fecha_archivo, filas)
         logger.info(
             "Acumulado mensual | archivo=%s | proceso=%s | filas=%s "
-            "| descartadas_dias<%s=%s | %s",
+            "| fin_de_mes=%s | descartadas_dias<%s=%s | %s",
             fecha_archivo.isoformat(),
             fecha_proceso.isoformat(),
             escritas,
-            self._dias_mora_minimo,
+            es_fin_de_mes,
+            dias_minimo,
             descartadas,
             archivo,
         )

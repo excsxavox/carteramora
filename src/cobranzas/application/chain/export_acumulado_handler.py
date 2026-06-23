@@ -39,7 +39,9 @@ class ExportAcumuladoHandler(Handler):
             if self._feriados is not None
             else frozenset()
         )
-        archivo = self._export.exportar(fecha_archivo, set(feriados))
+        archivo = self._export.exportar(
+            fecha_archivo, set(feriados), es_fin_de_mes=contexto.es_fin_de_mes
+        )
         contexto.archivo_acumulado_mensual = archivo
         logger.info("Entregable acumulado: %s", archivo)
         return contexto
