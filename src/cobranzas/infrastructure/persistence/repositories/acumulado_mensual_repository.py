@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from cobranzas.domain.models.fila_acumulado_mensual import FilaAcumuladoMensual
 from cobranzas.domain.ports.acumulado_mensual_port import AcumuladoMensualPort
 from cobranzas.infrastructure.persistence.mappers.cobranza_credito_mapper import (
+    ESTADO_ASESOR_FIN_DE_MES,
     ESTADO_ASESOR_MORA_TEMPRANA,
     codigo_usuario_desde_cedula_asesor,
 )
@@ -22,17 +23,23 @@ class SqlAlchemyAcumuladoMensualRepository(AcumuladoMensualPort):
             filas_db = session.execute(
                 select(Deuda, AsesorDeuda, Asesor)
                 .join(AsesorDeuda, AsesorDeuda.id_deuda == Deuda.id_deuda)
-                .join(Asesor, Asesor.id_asesor == AsesorDeuda.id_asesor)
+                .outerjoin(Asesor, Asesor.id_asesor == AsesorDeuda.id_asesor)
                 .where(
                     Deuda.fecha_corte == fecha_corte,
-                    AsesorDeuda.estado == ESTADO_ASESOR_MORA_TEMPRANA,
+                    AsesorDeuda.estado.in_(
+                        (ESTADO_ASESOR_MORA_TEMPRANA, ESTADO_ASESOR_FIN_DE_MES)
+                    ),
                 )
                 .order_by(Deuda.numero_operacion)
             ).all()
 
         resultado: List[FilaAcumuladoMensual] = []
         for deuda, asignacion, asesor in filas_db:
-            usuario = codigo_usuario_desde_cedula_asesor(asesor.cedula or "")
+            usuario = (
+                codigo_usuario_desde_cedula_asesor(asesor.cedula or "")
+                if asesor is not None
+                else ""
+            )
             resultado.append(
                 FilaAcumuladoMensual(
                     fecha_proceso=fecha_corte,
@@ -66,7 +73,9 @@ class SqlAlchemyAcumuladoMensualRepository(AcumuladoMensualPort):
                     fuente_repago=(deuda.fuente_repago or "").strip(),
                     identificacion_ifi=(deuda.identificacion_ifi or "").strip(),
                     usuario_asesor=usuario,
-                    nombre_asesor=(asesor.nombre or usuario).strip(),
+                    nombre_asesor=(
+                        (asesor.nombre or usuario).strip() if asesor is not None else ""
+                    ),
                     id_credito_recblue=(asignacion.id_credito_recblue or "").strip(),
                 )
             )

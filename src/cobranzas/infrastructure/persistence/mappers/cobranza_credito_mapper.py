@@ -11,6 +11,7 @@ CLAVE_CLASIFICACION_MORA = "CLASIFICACION_MORA"
 PREFIJO_CEDULA_ASESOR = "OF-"
 ESTADO_ASESOR_MORA_TEMPRANA = "MORA_TEMPRANA"
 ESTADO_ASESOR_MORA_MADURA = "MORA_MADURA"
+ESTADO_ASESOR_FIN_DE_MES = "FIN_DE_MES"
 CATALOGO_MORA_TEMPRANA = "mora_temprana"
 
 
@@ -108,7 +109,7 @@ def clasificacion_para_asignacion(
         return (
             CATALOGO_MORA_TEMPRANA,
             "Mora temprana",
-            ESTADO_ASESOR_MORA_TEMPRANA,
+            ESTADO_ASESOR_FIN_DE_MES if es_fin_de_mes else ESTADO_ASESOR_MORA_TEMPRANA,
         )
 
     estado = credito.clasificar_mora(dias_mora_minimo)

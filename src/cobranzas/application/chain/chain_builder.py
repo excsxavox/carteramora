@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from cobranzas.application.chain.asignacion_handler import AsignacionHandler
+from cobranzas.application.chain.exclusion_fin_mes_handler import ExclusionFinMesHandler
 from cobranzas.application.chain.export_acumulado_handler import ExportAcumuladoHandler
 from cobranzas.application.chain.export_asignacion_handler import ExportAsignacionHandler
 from cobranzas.application.chain.handler import Handler
@@ -17,6 +18,7 @@ from cobranzas.application.chain.reporte_handler import ProcesamientoMoraHandler
 from cobranzas.domain.ports.cartera_repository import CarteraRepositoryPort
 from cobranzas.domain.ports.credito_repository import CreditoRepositoryPort
 from cobranzas.domain.ports.feriados_calendario_port import FeriadosCalendarioPort
+from cobranzas.domain.ports.operaciones_fin_mes_port import OperacionesFinMesPort
 from cobranzas.domain.services.asignacion_cartera_service import AsignacionCarteraService
 from cobranzas.domain.services.cobranzas_service import CobranzasService
 from cobranzas.domain.services.cartera_merge_service import CarteraMergeService
@@ -51,6 +53,7 @@ def build_proceso_chain(
     recblue_adapter: Optional[RecblueArchivoAdapter] = None,
     export_acumulado_service: Optional[ExportarAcumuladoMensualService] = None,
     directorio_destino: Optional[Path] = None,
+    operaciones_fin_mes: Optional[OperacionesFinMesPort] = None,
 ) -> Handler:
     """
     morosidad → cartera → [Recblue] → [mora temprana → asignación]
@@ -76,6 +79,8 @@ def build_proceso_chain(
                 reglas_resolver,
             )
         )
+        if operaciones_fin_mes is not None:
+            cadena = cadena.enlazar(ExclusionFinMesHandler(operaciones_fin_mes))
         if asignacion_service is not None:
             cadena = cadena.enlazar(AsignacionHandler(asignacion_service))
 

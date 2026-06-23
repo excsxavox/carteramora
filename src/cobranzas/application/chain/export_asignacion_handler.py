@@ -29,6 +29,9 @@ class ExportAsignacionHandler(Handler):
         self._directorio_destino = directorio_destino
 
     def _procesar(self, contexto: ProcesoContext) -> ProcesoContext:
+        if contexto.es_fin_de_mes:
+            logger.info("ASIGNACION.csv omitido | fin de mes | solo se almacena sin asesor")
+            return contexto
         if contexto.creditos:
             fecha_corte = contexto.creditos[0].fecha_corte
             if not debe_exportar_asignacion(fecha_corte):

@@ -19,8 +19,8 @@ class AsesorDeuda(Base):
         Integer, primary_key=True, autoincrement=True
     )
     id_catalogo: Mapped[int] = mapped_column(Integer, nullable=False)
-    id_asesor: Mapped[int] = mapped_column(
-        ForeignKey("asesores.id_asesor"), nullable=False
+    id_asesor: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("asesores.id_asesor"), nullable=True
     )
     id_deuda: Mapped[int] = mapped_column(
         ForeignKey("deuda.id_deuda"), nullable=False
@@ -39,5 +39,5 @@ class AsesorDeuda(Base):
         DateTime(timezone=False), nullable=True
     )
 
-    asesor: Mapped["Asesor"] = relationship(back_populates="asignaciones")
+    asesor: Mapped[Optional["Asesor"]] = relationship(back_populates="asignaciones")
     deuda: Mapped["Deuda"] = relationship(back_populates="asignaciones")

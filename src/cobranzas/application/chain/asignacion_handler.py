@@ -19,7 +19,9 @@ class AsignacionHandler(Handler):
             return contexto
 
         fecha_corte = contexto.creditos[0].fecha_corte
-        creditos, filas = self._asignacion.asignar(contexto.creditos, fecha_corte)
+        creditos, filas = self._asignacion.asignar(
+            contexto.creditos, fecha_corte, es_fin_de_mes=contexto.es_fin_de_mes
+        )
         contexto.creditos = creditos
         contexto.asignaciones = filas
         logger.info("Asignación completada | filas=%s", len(filas))

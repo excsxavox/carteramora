@@ -16,7 +16,9 @@ def test_ultimo_dia_mes_servicio_devuelve_sin_filas():
 
     resultado = handler._procesar(contexto)
 
-    servicio.asignar.assert_called_once_with([credito], date(2026, 6, 30))
+    servicio.asignar.assert_called_once_with(
+        [credito], date(2026, 6, 30), es_fin_de_mes=False
+    )
     assert resultado.asignaciones == []
 
 

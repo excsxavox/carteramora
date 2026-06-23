@@ -8,6 +8,7 @@ from cobranzas.application.chain.proceso_context import ProcesoContext
 from cobranzas.domain.ports.cartera_repository import CarteraRepositoryPort
 from cobranzas.domain.ports.credito_repository import CreditoRepositoryPort
 from cobranzas.domain.ports.feriados_calendario_port import FeriadosCalendarioPort
+from cobranzas.domain.ports.operaciones_fin_mes_port import OperacionesFinMesPort
 from cobranzas.domain.services.asignacion_cartera_service import AsignacionCarteraService
 from cobranzas.infrastructure.adapters.recblue_archivo_adapter import RecblueArchivoAdapter
 from cobranzas.domain.services.cobranzas_service import CobranzasService
@@ -108,6 +109,7 @@ class ProcesarCobranzasUseCase:
         export_acumulado_service: Optional[ExportarAcumuladoMensualService] = None,
         directorio_destino: Optional[Path] = None,
         es_fin_de_mes: bool = False,
+        operaciones_fin_mes: Optional[OperacionesFinMesPort] = None,
     ) -> "ProcesarCobranzasUseCase":
         chain = build_proceso_chain(
             morosidad_repository=morosidad_repository,
@@ -123,6 +125,7 @@ class ProcesarCobranzasUseCase:
             recblue_adapter=recblue_adapter,
             export_acumulado_service=export_acumulado_service,
             directorio_destino=directorio_destino,
+            operaciones_fin_mes=operaciones_fin_mes,
         )
         return cls(
             proceso_chain=chain,

@@ -1,6 +1,6 @@
 import logging
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from sqlalchemy import delete, select
 
@@ -11,6 +11,7 @@ from cobranzas.domain.ports.cobranza_db_repository import CobranzaDbRepositoryPo
 from cobranzas.domain.ports.recblue_port import RecbluePort
 from cobranzas.infrastructure.persistence.mappers.cobranza_credito_mapper import (
     CLAVE_CLASIFICACION_MORA,
+    ESTADO_ASESOR_FIN_DE_MES,
     cedula_asesor,
     clasificacion_para_asignacion,
     codigo_asesor,
@@ -124,6 +125,20 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         session.execute(delete(Deuda).where(Deuda.fecha_corte == fecha_corte))
         return len(ids_deuda)
 
+    def operaciones_fin_de_mes(self, antes_de: date) -> Set[str]:
+        """Números de operación marcados FIN_DE_MES con corte anterior a ``antes_de``."""
+        with self._session_factory() as session:
+            numeros = session.scalars(
+                select(Deuda.numero_operacion)
+                .join(AsesorDeuda, AsesorDeuda.id_deuda == Deuda.id_deuda)
+                .where(
+                    AsesorDeuda.estado == ESTADO_ASESOR_FIN_DE_MES,
+                    Deuda.fecha_corte < antes_de,
+                    Deuda.numero_operacion.is_not(None),
+                )
+            ).all()
+        return {(n or "").strip() for n in numeros if (n or "").strip()}
+
     def _upsert_credito(self, session: Session, credito: Credito) -> None:
         datos_deudor = mapear_deudor(credito)
         datos_deuda = mapear_deuda(credito)
@@ -143,7 +158,10 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         id_catalogo = self._obtener_o_crear_catalogo(
             session, id_clave, cat_valor, cat_desc
         )
-        id_asesor = self._obtener_o_crear_asesor(session, credito)
+        # En fin de mes no se asigna asesor: la operación se guarda sin rotar.
+        id_asesor = (
+            None if self._es_fin_de_mes else self._obtener_o_crear_asesor(session, credito)
+        )
         self._upsert_asesor_deuda(
             session,
             credito,
@@ -331,7 +349,8 @@ class SqlAlchemyCobranzaRepository(CobranzaDbRepositoryPort):
         id_catalogo: int,
         estado_asignacion: str,
     ) -> None:
-        if id_asesor is None:
+        # En fin de mes se persiste la fila aunque no haya asesor (sin rotar).
+        if id_asesor is None and not self._es_fin_de_mes:
             return
 
         monto, monto_inicial, monto_mora = montos_desde_credito(credito)

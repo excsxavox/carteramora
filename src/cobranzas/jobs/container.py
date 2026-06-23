@@ -66,6 +66,7 @@ def build_procesar_cobranzas_use_case(
     asignacion_service = None
     recblue_adapter = None
     session_factory = None
+    operaciones_fin_mes = None
 
     if cfg.archivo_recblue is not None:
         recblue_adapter = RecblueArchivoAdapter(cfg.archivo_recblue)
@@ -119,6 +120,7 @@ def build_procesar_cobranzas_use_case(
             asignacion_mensual=asignacion_mensual,
             recblue=recblue_adapter,
         )
+        operaciones_fin_mes = SqlAlchemyCobranzaRepository(session_factory)
 
     fecha_corte = cfg.fecha_corte_efectiva()
 
@@ -153,4 +155,5 @@ def build_procesar_cobranzas_use_case(
         export_acumulado_service=export_acumulado_service,
         directorio_destino=cfg.directorio_destino,
         es_fin_de_mes=cfg.es_fin_de_mes,
+        operaciones_fin_mes=operaciones_fin_mes,
     )

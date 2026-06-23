@@ -2,6 +2,7 @@ from datetime import date
 
 from cobranzas.domain.models.credito import Credito
 from cobranzas.infrastructure.persistence.mappers.cobranza_credito_mapper import (
+    ESTADO_ASESOR_FIN_DE_MES,
     ESTADO_ASESOR_MORA_TEMPRANA,
     clasificacion_para_asignacion,
 )
@@ -94,7 +95,7 @@ def test_fin_de_mes_clasifica_mora_temprana_sin_tope():
         date(2026, 6, 30),
         estado_operacion="VIGENTE",
     )
-    _, _, estado = clasificacion_para_asignacion(
+    cat_valor, _, estado = clasificacion_para_asignacion(
         credito,
         dias_mora_minimo=30,
         usar_mora_temprana=True,
@@ -102,7 +103,9 @@ def test_fin_de_mes_clasifica_mora_temprana_sin_tope():
         mora_temprana_dias_max=0,
         es_fin_de_mes=True,
     )
-    assert estado == ESTADO_ASESOR_MORA_TEMPRANA
+    # En fin de mes se clasifica como mora temprana (catálogo) pero con estado FIN_DE_MES.
+    assert cat_valor == "mora_temprana"
+    assert estado == ESTADO_ASESOR_FIN_DE_MES
 
 
 def test_estado_operativo_queda_en_deuda_no_en_asignacion():

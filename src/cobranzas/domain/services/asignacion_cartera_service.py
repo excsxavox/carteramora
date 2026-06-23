@@ -59,7 +59,14 @@ class AsignacionCarteraService:
         self,
         creditos: List[Credito],
         fecha_corte: date,
+        es_fin_de_mes: bool = False,
     ) -> Tuple[List[Credito], List[AsignacionCredito]]:
+        if es_fin_de_mes:
+            logger.info(
+                "Asignación omitida | %s | fin de mes | solo se almacena sin asesor",
+                fecha_corte.isoformat(),
+            )
+            return list(creditos), []
         if not debe_asignar_asesores(fecha_corte):
             logger.info(
                 "Asignación omitida | %s | último día del mes | solo historial en BD",
